@@ -1,0 +1,558 @@
+package com.shop.bot;
+
+import com.shop.config.ShopProperties;
+import com.shop.model.Order;
+import com.shop.model.Payment;
+import com.shop.model.Product;
+import com.shop.payment.PayGateProvider;
+import com.shop.payment.PaymentService;
+import com.shop.model.Review;
+import com.shop.repo.OrderRepo;
+import com.shop.repo.ProductRepo;
+import com.shop.repo.ReviewRepo;
+import com.shop.repo.ShopUserRepo;
+import com.shop.service.BotLogService;
+import com.shop.service.OrderService;
+import com.shop.service.PlanService;
+import com.shop.service.QrService;
+import com.shop.service.SettingsService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.channel.concrete.Category;
+import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent;
+import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.interactions.commands.Command;
+import net.dv8tion.jda.api.interactions.components.buttons.Button;
+import net.dv8tion.jda.api.interactions.components.selections.StringSelectMenu;
+import net.dv8tion.jda.api.utils.FileUpload;
+import org.springframework.stereotype.Component;
+
+import java.nio.charset.StandardCharsets;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.Base64;
+import java.util.EnumSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class ShopCommands extends ListenerAdapter {
+
+    private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
+            .withZone(ZoneId.systemDefault());
+
+    private final ProductRepo productRepo;
+    private final OrderRepo orderRepo;
+    private final ShopUserRepo userRepo;
+    private final ReviewRepo reviewRepo;
+    private final OrderService orderService;
+    private final PaymentService paymentService;
+    private final PayGateProvider payGate;
+    private final QrService qrService;
+    private final EmbedFactory embeds;
+    private final BotLogService botLog;
+    private final ShopProperties props;
+    private final SettingsService settings;
+
+    /** true = Aktion blockiert, Antwort wurde bereits gesendet. */
+    private boolean maintenanceBlocked(net.dv8tion.jda.api.interactions.callbacks.IReplyCallback event) {
+        if (!settings.isMaintenance()) return false;
+        event.replyEmbeds(embeds.error("🔧 This shop is currently in maintenance mode. Please try again later."))
+                .setEphemeral(true).queue();
+        return true;
+    }
+
+    // ===================== Slash-Commands =====================
+
+    @Override
+    public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
+        try {
+            switch (event.getName()) {
+                case "shop" -> handleShop(event);
+                case "product" -> handleProduct(event);
+                case "buy" -> handleBuy(event);
+                case "orders" -> handleOrders(event);
+                case "review" -> handleReview(event);
+                case "ticket" -> handleTicket(event);
+                default -> { /* /admin is handled in AdminCommands */ }
+            }
+        } catch (Exception e) {
+            log.error("Error in /{}", event.getName(), e);
+            botLog.error("⚠️ Bot Error", "Command `/" + event.getName() + "`: " + e.getMessage());
+            if (!event.isAcknowledged()) {
+                event.replyEmbeds(embeds.error("Something went wrong. Please try again later."))
+                        .setEphemeral(true).queue();
+            }
+        }
+    }
+
+    private void handleShop(SlashCommandInteractionEvent event) {
+        if (maintenanceBlocked(event)) return;
+        String guildId = event.getGuild() != null ? event.getGuild().getId() : null;
+        Map<String, Long> categories = new LinkedHashMap<>();
+        for (Product p : productsForGuild(guildId)) {
+            String cat = p.getCategory() == null || p.getCategory().isBlank() ? "Other" : p.getCategory();
+            categories.merge(cat, 1L, Long::sum);
+        }
+        if (categories.isEmpty()) {
+            event.replyEmbeds(embeds.error("This shop is currently empty.")).setEphemeral(true).queue();
+            return;
+        }
+        EmbedBuilder eb = embeds.base()
+                .setTitle("🛍️ " + settings.brandName())
+                .setDescription("Choose a category below to see the products.");
+        categories.forEach((cat, count) -> eb.addField(cat, count + " product" + (count > 1 ? "s" : ""), true));
+
+        StringSelectMenu.Builder menu = StringSelectMenu.create("shop:cat")
+                .setPlaceholder("Choose a category…");
+        categories.keySet().forEach(cat -> menu.addOption(cat, cat));
+
+        event.replyEmbeds(eb.build()).addActionRow(menu.build()).setEphemeral(true).queue();
+    }
+
+    private void handleProduct(SlashCommandInteractionEvent event) {
+        String name = event.getOption("product").getAsString();
+        Product product = findGuildProduct(event.getGuild(), name);
+        if (product == null) {
+            event.replyEmbeds(embeds.error("Product **" + name + "** not found.")).setEphemeral(true).queue();
+            return;
+        }
+        event.replyEmbeds(productEmbed(product))
+                .addActionRow(Button.success("buy:start:" + product.getId(), "🛒 Buy Now"))
+                .setEphemeral(true).queue();
+    }
+
+    private void handleBuy(SlashCommandInteractionEvent event) {
+        if (maintenanceBlocked(event)) return;
+        String name = event.getOption("product").getAsString();
+        int quantity = event.getOption("quantity") != null ? event.getOption("quantity").getAsInt() : 1;
+        String discount = event.getOption("discount_code") != null ? event.getOption("discount_code").getAsString() : null;
+
+        Product product = findGuildProduct(event.getGuild(), name);
+        if (product == null) {
+            event.replyEmbeds(embeds.error("Product **" + name + "** not found.")).setEphemeral(true).queue();
+            return;
+        }
+        if (product.getStock() != -1 && product.getStock() < quantity) {
+            event.replyEmbeds(embeds.error("Not enough stock (available: " + product.getStock() + ")."))
+                    .setEphemeral(true).queue();
+            return;
+        }
+        showCheckout(event, product, quantity, discount);
+    }
+
+    /** Warenkorb-Zusammenfassung + Auswahl der Zahlungsmethode. */
+    private void showCheckout(net.dv8tion.jda.api.interactions.callbacks.IReplyCallback event,
+                              Product product, int quantity, String discount) {
+        String cur = settings.currencySymbol();
+        EmbedBuilder eb = embeds.base()
+                .setTitle("🧾 Order Summary")
+                .addField("Product", product.getName(), true)
+                .addField("Quantity", String.valueOf(quantity), true)
+                .addField("Unit Price", product.getPrice().toPlainString() + " " + cur, true)
+                .addField("Total", product.getPrice().multiply(java.math.BigDecimal.valueOf(quantity)).toPlainString()
+                        + " " + cur + (discount != null ? " *(discount code will be verified at checkout)*" : ""), false)
+                .setDescription("Choose a payment method below. For crypto you'll get an address, amount and QR code.");
+        if (isValidImageUrl(product.getImageUrl())) {
+            eb.setThumbnail(product.getImageUrl());
+        }
+
+        String encodedCode = discount == null ? ""
+                : Base64.getUrlEncoder().withoutPadding().encodeToString(discount.getBytes(StandardCharsets.UTF_8));
+        StringSelectMenu.Builder menu = StringSelectMenu
+                .create("buy:cur:" + product.getId() + ":" + quantity + ":" + encodedCode)
+                .setPlaceholder("Choose a payment method…");
+        PaymentService.CURRENCIES.keySet().forEach(c -> menu.addOption(c, c, "Crypto payment"));
+        // Karten-Option, wenn der Verkäufer (oder die Site) eine PayGate-Wallet hat
+        var merchant = product.getOwnerId() == null ? null : userRepo.findById(product.getOwnerId()).orElse(null);
+        if (payGate.isConfiguredFor(merchant)) {
+            menu.addOption("💳 Card / Apple Pay", PaymentService.CARD, "Card payment via PayGate");
+        }
+
+        event.replyEmbeds(eb.build()).addActionRow(menu.build()).setEphemeral(true).queue();
+    }
+
+    private void handleOrders(SlashCommandInteractionEvent event) {
+        List<Order> orders = orderRepo.findByUserIdOrderByCreatedAtDesc(event.getUser().getId());
+        if (orders.isEmpty()) {
+            event.replyEmbeds(embeds.error("You don't have any orders yet.")).setEphemeral(true).queue();
+            return;
+        }
+        StringBuilder sb = new StringBuilder();
+        orders.stream().limit(10).forEach(o -> sb.append("**#").append(o.getId()).append("** • ")
+                .append(o.getProductName()).append(" x").append(o.getQuantity())
+                .append(" • ").append(o.getTotalPrice().toPlainString()).append(" ").append(settings.currencySymbol()).append(" • ")
+                .append(statusLabel(o.getStatus())).append(" • ")
+                .append(DATE.format(o.getCreatedAt())).append("\n"));
+        event.replyEmbeds(embeds.base().setTitle("📦 Your Orders").setDescription(sb.toString()).build())
+                .setEphemeral(true).queue();
+    }
+
+    /** /review — Bewertung abgeben, nur für verifizierte Käufer, wird öffentlich im Channel gepostet. */
+    private void handleReview(SlashCommandInteractionEvent event) {
+        if (event.getGuild() == null) {
+            event.replyEmbeds(embeds.error("Reviews can only be posted on a server.")).setEphemeral(true).queue();
+            return;
+        }
+        if (event.getOption("product") == null || event.getOption("stars") == null) {
+            event.replyEmbeds(embeds.error("Please pick a product and a star rating (1-5). "
+                    + "If the options are missing, the bot's commands are still syncing — try again in a moment."))
+                    .setEphemeral(true).queue();
+            return;
+        }
+        String name = event.getOption("product").getAsString();
+        int stars = event.getOption("stars").getAsInt();
+        String text = event.getOption("text") != null ? event.getOption("text").getAsString() : null;
+
+        Product product = findGuildProduct(event.getGuild(), name);
+        if (product == null) {
+            event.replyEmbeds(embeds.error("Product **" + name + "** not found.")).setEphemeral(true).queue();
+            return;
+        }
+        boolean verifiedBuyer = orderRepo.findByUserIdOrderByCreatedAtDesc(event.getUser().getId()).stream()
+                .anyMatch(o -> product.getId().equals(o.getProductId())
+                        && (o.getStatus() == Order.Status.DELIVERED || o.getStatus() == Order.Status.PAID));
+        if (!verifiedBuyer) {
+            event.replyEmbeds(embeds.error("You can only review products you've actually purchased."))
+                    .setEphemeral(true).queue();
+            return;
+        }
+        if (reviewRepo.findByUserIdAndProductId(event.getUser().getId(), product.getId()).isPresent()) {
+            event.replyEmbeds(embeds.error("You've already reviewed this product.")).setEphemeral(true).queue();
+            return;
+        }
+
+        Review review = new Review();
+        review.setGuildId(event.getGuild().getId());
+        review.setProductId(product.getId());
+        review.setProductName(product.getName());
+        review.setUserId(event.getUser().getId());
+        review.setUsername(event.getUser().getName());
+        review.setStars(stars);
+        review.setText(text);
+        reviewRepo.save(review);
+
+        String starLine = "⭐".repeat(stars) + "▫".repeat(5 - stars);
+        EmbedBuilder eb = embeds.base()
+                .setTitle("Review — " + product.getName())
+                .setDescription("**" + starLine + "**  (" + stars + "/5)"
+                        + (text != null && !text.isBlank() ? "\n\n" + text : ""))
+                .setAuthor(event.getUser().getName() + " · verified buyer", null, event.getUser().getEffectiveAvatarUrl());
+        if (isValidImageUrl(product.getImageUrl())) eb.setThumbnail(product.getImageUrl());
+
+        // Wenn im Dashboard ein Bewertungs-Channel gesetzt ist, dorthin posten (zentrale Social-Proof-Wall),
+        // sonst öffentlich in den aktuellen Channel.
+        String reviewChannelId = settings.reviewChannelId();
+        var reviewChannel = reviewChannelId == null || reviewChannelId.isBlank()
+                ? null : event.getGuild().getTextChannelById(reviewChannelId.trim());
+        if (reviewChannel != null) {
+            reviewChannel.sendMessageEmbeds(eb.build()).queue();
+            event.replyEmbeds(embeds.base()
+                    .setTitle("Thanks for your review!")
+                    .setDescription("Your " + stars + "★ review was posted in " + reviewChannel.getAsMention() + ".")
+                    .build()).setEphemeral(true).queue();
+        } else {
+            event.replyEmbeds(eb.build()).queue(); // öffentlich — Social Proof im Channel
+        }
+    }
+
+    private void handleTicket(SlashCommandInteractionEvent event) {
+        Guild guild = event.getGuild();
+        if (guild == null) {
+            event.replyEmbeds(embeds.error("Tickets can only be opened on the server.")).setEphemeral(true).queue();
+            return;
+        }
+        event.deferReply(true).queue();
+
+        String cleaned = "ticket-" + event.getUser().getName().toLowerCase().replaceAll("[^a-z0-9]", "");
+        String channelName = cleaned.substring(0, Math.min(90, cleaned.length()));
+        var action = guild.createTextChannel(channelName);
+
+        String categoryId = props.getDiscord().getTicketCategoryId();
+        if (categoryId != null && !categoryId.isBlank()) {
+            Category category = guild.getCategoryById(categoryId);
+            if (category != null) action = action.setParent(category);
+        }
+        action = action
+                .addPermissionOverride(guild.getPublicRole(), null, EnumSet.of(Permission.VIEW_CHANNEL))
+                .addMemberPermissionOverride(event.getUser().getIdLong(),
+                        EnumSet.of(Permission.VIEW_CHANNEL, Permission.MESSAGE_SEND, Permission.MESSAGE_HISTORY), null);
+        String supportRole = props.getDiscord().getSupportRoleId();
+        if (supportRole != null && !supportRole.isBlank()) {
+            try {
+                action = action.addRolePermissionOverride(Long.parseLong(supportRole.trim()),
+                        EnumSet.of(Permission.VIEW_CHANNEL, Permission.MESSAGE_SEND, Permission.MESSAGE_HISTORY), null);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+
+        action.queue(channel -> {
+            channel.sendMessage(event.getUser().getAsMention())
+                    .addEmbeds(embeds.base()
+                            .setTitle("🎫 Support Ticket")
+                            .setDescription("Describe your issue — the team will get back to you as soon as possible.")
+                            .build())
+                    .addActionRow(Button.danger("ticket:close", "Close Ticket"))
+                    .queue();
+            event.getHook().sendMessage("🎫 Your ticket has been created: " + channel.getAsMention()).queue();
+        }, err -> event.getHook().sendMessageEmbeds(
+                embeds.error("Ticket could not be created: " + err.getMessage())).queue());
+    }
+
+    // ===================== Select-Menüs =====================
+
+    @Override
+    public void onStringSelectInteraction(StringSelectInteractionEvent event) {
+        String id = event.getComponentId();
+        try {
+            if (id.equals("shop:cat")) {
+                showCategory(event);
+            } else if (id.equals("shop:prod")) {
+                showProductDetail(event);
+            } else if (id.startsWith("buy:cur:")) {
+                startPayment(event);
+            }
+        } catch (Exception e) {
+            log.error("Error in select {}", id, e);
+            if (!event.isAcknowledged()) {
+                event.replyEmbeds(embeds.error("Something went wrong.")).setEphemeral(true).queue();
+            } else {
+                event.getHook().sendMessageEmbeds(embeds.error("Something went wrong.")).queue();
+            }
+        }
+    }
+
+    private void showCategory(StringSelectInteractionEvent event) {
+        String category = event.getValues().get(0);
+        String guildId = event.getGuild() != null ? event.getGuild().getId() : null;
+        List<Product> products = category.equals("Other")
+                ? productsForGuild(guildId).stream()
+                    .filter(p -> p.getCategory() == null || p.getCategory().isBlank()).toList()
+                : productsForGuild(guildId).stream()
+                    .filter(p -> category.equals(p.getCategory())).toList();
+        if (products.isEmpty()) {
+            event.editMessageEmbeds(embeds.error("No products in this category.")).setComponents().queue();
+            return;
+        }
+        StringBuilder sb = new StringBuilder();
+        StringSelectMenu.Builder menu = StringSelectMenu.create("shop:prod").setPlaceholder("View product…");
+        products.stream().limit(25).forEach(p -> {
+            sb.append("**").append(p.getName()).append("** — ").append(p.getPrice().toPlainString())
+                    .append(" ").append(settings.currencySymbol()).append(" — Stock: ").append(stockText(p)).append("\n");
+            menu.addOption(p.getName(), String.valueOf(p.getId()),
+                    p.getPrice().toPlainString() + " " + settings.currencySymbol());
+        });
+        event.editMessageEmbeds(embeds.base().setTitle("📂 " + category).setDescription(sb.toString()).build())
+                .setActionRow(menu.build()).queue();
+    }
+
+    private void showProductDetail(StringSelectInteractionEvent event) {
+        long productId = Long.parseLong(event.getValues().get(0));
+        Product product = productRepo.findById(productId).filter(Product::isActive).orElse(null);
+        if (product == null) {
+            event.editMessageEmbeds(embeds.error("Product no longer available.")).setComponents().queue();
+            return;
+        }
+        event.editMessageEmbeds(productEmbed(product))
+                .setActionRow(Button.success("buy:start:" + product.getId(), "🛒 Buy Now"))
+                .queue();
+    }
+
+    /** Währung gewählt -> Bestellung + Zahlung anlegen, Adresse + QR-Code liefern. */
+    private void startPayment(StringSelectInteractionEvent event) {
+        String[] parts = event.getComponentId().split(":");
+        long productId = Long.parseLong(parts[2]);
+        int quantity = Integer.parseInt(parts[3]);
+        String discount = parts.length > 4 && !parts[4].isEmpty()
+                ? new String(Base64.getUrlDecoder().decode(parts[4]), StandardCharsets.UTF_8)
+                : null;
+        String currency = event.getValues().get(0);
+
+        if (maintenanceBlocked(event)) return;
+        event.deferReply(true).queue();
+        try {
+            Order order = orderService.createOrder(event.getUser().getId(), event.getUser().getName(),
+                    productId, quantity, discount);
+            Payment payment = paymentService.createPayment(order, currency);
+
+            if (PaymentService.CARD.equals(currency)) {
+                // Kartenzahlung: Checkout-Link statt Krypto-Adresse + QR
+                MessageEmbed embed = cardPaymentEmbed(order);
+                Button payButton = Button.link(payment.getPayAddress(), "💳 Pay Now");
+                event.getHook().sendMessageEmbeds(embed).setActionRow(payButton).queue();
+                event.getUser().openPrivateChannel()
+                        .flatMap(ch -> ch.sendMessageEmbeds(embed).setActionRow(payButton))
+                        .queue(ok -> {}, err -> {});
+            } else {
+                MessageEmbed embed = paymentEmbed(order, payment);
+                byte[] qr = qrService.png(payment.getPayAddress());
+
+                event.getHook().sendMessageEmbeds(embed)
+                        .addFiles(FileUpload.fromData(qr, "qr.png"))
+                        .queue();
+
+                // Kopie per DM (best effort)
+                event.getUser().openPrivateChannel()
+                        .flatMap(ch -> ch.sendMessageEmbeds(embed).addFiles(FileUpload.fromData(qrService.png(payment.getPayAddress()), "qr.png")))
+                        .queue(ok -> {}, err -> {});
+            }
+
+            botLog.info("🛒 New Order",
+                    "**#" + order.getId() + "** — " + order.getProductName() + " x" + order.getQuantity()
+                            + " for " + order.getTotalPrice() + " " + settings.currencySymbol() + " (" + currency + ")"
+                            + "\nBuyer: <@" + order.getUserId() + ">");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            event.getHook().sendMessageEmbeds(embeds.error(e.getMessage())).queue();
+        } catch (Exception e) {
+            log.error("Payment could not be created", e);
+            botLog.error("⚠️ Payment Error", e.getMessage() == null ? e.toString() : e.getMessage());
+            event.getHook().sendMessageEmbeds(
+                    embeds.error("Payment could not be created. Please try again later.")).queue();
+        }
+    }
+
+    // ===================== Buttons =====================
+
+    @Override
+    public void onButtonInteraction(ButtonInteractionEvent event) {
+        String id = event.getComponentId();
+        try {
+            if (id.startsWith("buy:start:")) {
+                if (maintenanceBlocked(event)) return;
+                long productId = Long.parseLong(id.substring("buy:start:".length()));
+                Product product = productRepo.findById(productId).filter(Product::isActive).orElse(null);
+                if (product == null) {
+                    event.replyEmbeds(embeds.error("Product no longer available.")).setEphemeral(true).queue();
+                    return;
+                }
+                showCheckout(event, product, 1, null);
+            } else if (id.equals("ticket:close")) {
+                if (event.getChannel().getName().startsWith("ticket-")) {
+                    event.reply("🔒 Closing ticket…").setEphemeral(true).queue();
+                    event.getChannel().asTextChannel().delete().queueAfter(2, java.util.concurrent.TimeUnit.SECONDS);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error in button {}", id, e);
+            botLog.error("⚠️ Bot Error", "Button `" + id + "`: " + e.getMessage());
+            if (!event.isAcknowledged()) {
+                event.replyEmbeds(embeds.error("Something went wrong. Please try again later."))
+                        .setEphemeral(true).queue();
+            }
+        }
+    }
+
+    // ===================== Autocomplete =====================
+
+    @Override
+    public void onCommandAutoCompleteInteraction(CommandAutoCompleteInteractionEvent event) {
+        if (!event.getFocusedOption().getName().equals("product")) return;
+        if (event.getGuild() == null) {
+            event.replyChoices(List.of()).queue(ok -> {}, err -> {});
+            return;
+        }
+        String query = event.getFocusedOption().getValue();
+        List<Command.Choice> choices = productRepo
+                .findTop25ByGuildIdAndActiveTrueAndNameContainingIgnoreCase(event.getGuild().getId(), query)
+                .stream()
+                .filter(p -> !PlanService.PLATFORM_CATEGORY.equals(p.getCategory()))
+                .limit(25)
+                .map(p -> new Command.Choice(p.getName(), p.getName()))
+                .toList();
+        event.replyChoices(choices).queue(ok -> {}, err -> {});
+    }
+
+    // ===================== Helfer =====================
+
+    /** Alle aktiven, kaufbaren Produkte des angegebenen Discord-Servers (ohne interne Plan-Produkte). */
+    private List<Product> productsForGuild(String guildId) {
+        if (guildId == null) return List.of();
+        return productRepo.findByGuildIdAndActiveTrueOrderByCategoryAscNameAsc(guildId).stream()
+                .filter(p -> !PlanService.PLATFORM_CATEGORY.equals(p.getCategory()))
+                .toList();
+    }
+
+    /** Produkt per Name innerhalb des aktuellen Servers finden (Discord-Server-getrennter Katalog). */
+    private Product findGuildProduct(Guild guild, String name) {
+        if (guild == null) return null;
+        return productRepo.findByGuildIdAndNameIgnoreCase(guild.getId(), name)
+                .filter(Product::isActive)
+                .filter(p -> !PlanService.PLATFORM_CATEGORY.equals(p.getCategory()))
+                .orElse(null);
+    }
+
+    /** JDA lehnt Embed-Bilder ab, die keine absolute http(s)/attachment-URL sind (z. B. alte relative Upload-Pfade). */
+    private boolean isValidImageUrl(String url) {
+        if (url == null || url.isBlank()) return false;
+        String lower = url.trim().toLowerCase();
+        return lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("attachment://");
+    }
+
+    private String stockText(Product p) {
+        return p.getStock() == -1 ? "∞" : String.valueOf(p.getStock());
+    }
+
+    private String statusLabel(Order.Status status) {
+        return switch (status) {
+            case PENDING -> "🕐 Pending";
+            case PAID -> "💰 Paid";
+            case DELIVERED -> "✅ Delivered";
+            case CANCELLED -> "❌ Cancelled";
+            case EXPIRED -> "⌛ Expired";
+        };
+    }
+
+    private MessageEmbed productEmbed(Product p) {
+        EmbedBuilder eb = embeds.base()
+                .setTitle("🛍️ " + p.getName())
+                .addField("Price", p.getPrice().toPlainString() + " " + settings.currencySymbol(), true)
+                .addField("Category", p.getCategory() == null || p.getCategory().isBlank() ? "Other" : p.getCategory(), true)
+                .addField("Stock", stockText(p), true);
+        if (p.getDescription() != null && !p.getDescription().isBlank()) {
+            eb.setDescription(p.getDescription());
+        }
+        if (isValidImageUrl(p.getImageUrl())) {
+            eb.setImage(p.getImageUrl());
+        }
+        return eb.build();
+    }
+
+    private MessageEmbed paymentEmbed(Order order, Payment payment) {
+        return embeds.base()
+                .setTitle("💸 Payment for Order #" + order.getId())
+                .setDescription("Send **exactly** the following amount to the address below.\n"
+                        + "Delivery is automatic once the blockchain confirms it.")
+                .addField("Product", order.getProductName() + " x" + order.getQuantity(), true)
+                .addField("Price", order.getTotalPrice().toPlainString() + " " + settings.currencySymbol()
+                        + (order.getDiscountPercent() > 0 ? " (-" + order.getDiscountPercent() + "%)" : ""), true)
+                .addField("Currency", payment.getPayCurrency(), true)
+                .addField("Amount", "`" + payment.getPayAmount().stripTrailingZeros().toPlainString() + " "
+                        + payment.getPayCurrency() + "`", false)
+                .addField("Address", "`" + payment.getPayAddress() + "`", false)
+                .addField("⏱ Valid for", props.getOrderExpiryMinutes() + " minutes", true)
+                .setImage("attachment://qr.png")
+                .build();
+    }
+
+    private MessageEmbed cardPaymentEmbed(Order order) {
+        return embeds.base()
+                .setTitle("💳 Card Payment for Order #" + order.getId())
+                .setDescription("Click **Pay Now** below and complete the payment.\n"
+                        + "Delivery is automatic once the payment succeeds.")
+                .addField("Product", order.getProductName() + " x" + order.getQuantity(), true)
+                .addField("Amount", order.getTotalPrice().toPlainString() + " " + settings.currencySymbol()
+                        + (order.getDiscountPercent() > 0 ? " (-" + order.getDiscountPercent() + "%)" : ""), true)
+                .addField("⏱ Valid for", props.getOrderExpiryMinutes() + " minutes", true)
+                .build();
+    }
+}

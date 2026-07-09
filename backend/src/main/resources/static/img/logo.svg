@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffe08a"/>
+      <stop offset="0.45" stop-color="#f5b301"/>
+      <stop offset="1" stop-color="#c8890a"/>
+    </linearGradient>
+  </defs>
+  <!-- Pokal "P" — bold angular gaming mark -->
+  <path fill="url(#gold)" d="M30 16 h30 a22 20 0 0 1 0 40 H44 v9 l-14 20 V16 z
+                             M44 30 v12 h14 a6 6 0 0 0 0-12 z" fill-rule="evenodd"/>
+</svg>

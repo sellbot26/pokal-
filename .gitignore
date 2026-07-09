@@ -1,0 +1,8 @@
+.env
+uploads/
+backend/target/
+backend/data/
+*.log
+.idea/
+*.iml
+.vscode/

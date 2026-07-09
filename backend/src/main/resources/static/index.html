@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokal</title>
+    <link rel="icon" type="image/svg+xml" href="/img/logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="landing-body">
+
+<nav class="landing-nav">
+    <div class="landing-brand">
+        <img src="/img/logo.svg" alt="" class="landing-logo-icon">
+        <span id="navBrandName">Pokal</span>
+    </div>
+    <a class="btn btn-primary" href="/oauth2/authorization/discord">Enter Panel</a>
+</nav>
+
+<header class="hero">
+    <div class="hero-badge">✦ Discord Commerce Platform</div>
+    <h1 id="heroTitle">Sell on Discord.<br><span class="grad">Automate everything.</span></h1>
+    <p class="hero-sub" id="heroSub">
+        Products, stock, crypto &amp; card payments, license keys, embeds and automated delivery —
+        one bot, one dashboard, zero code.
+    </p>
+    <div id="maintenanceInfo" class="login-error" hidden style="max-width:520px;margin:0 auto 18px;border-color:color-mix(in srgb, var(--yellow) 40%, transparent);color:var(--yellow)">
+        This shop is currently in maintenance mode.
+    </div>
+    <div class="hero-actions">
+        <a class="btn btn-primary btn-lg" href="/oauth2/authorization/discord">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M20.317 4.37a19.79 19.79 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.126-.094.252-.192.372-.291a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+            </svg>
+            Enter Panel
+        </a>
+        <a class="btn btn-ghost btn-lg" href="#features">View features</a>
+    </div>
+    <div class="hero-trust">
+        <span><i class="dot"></i> Automated delivery</span>
+        <span><i class="dot"></i> Crypto &amp; card payments</span>
+        <span><i class="dot"></i> No code required</span>
+    </div>
+    <div id="loginError" class="login-error" hidden style="max-width:420px;margin:18px auto 0">
+        Login failed. Your account may be banned.
+    </div>
+</header>
+
+<section class="section-wrap" id="features">
+    <div class="section-heading">
+        <span class="eyebrow">Platform</span>
+        <h2>Everything your shop needs</h2>
+        <p class="muted">Run the entire storefront from one dashboard — no code required.</p>
+    </div>
+    <div class="feature-grid" id="featureGrid"></div>
+</section>
+
+<section class="section-wrap" id="plans">
+    <div class="section-heading">
+        <span class="eyebrow">Pricing</span>
+        <h2>Simple plans that scale with you</h2>
+        <p class="muted">Start free, upgrade any time. Pay monthly or save with yearly billing.</p>
+    </div>
+    <div class="plan-grid" id="planGrid"></div>
+</section>
+
+<footer class="landing-footer">
+    <div class="landing-brand"><img src="/img/logo.svg" alt=""><span id="footerBrandName">Pokal</span></div>
+    <div class="landing-footer-links" id="footerLinks"></div>
+    <span class="muted" style="font-size:12px">&copy; <span id="footerYear"></span> <span id="footerBrandName2">Pokal</span></span>
+</footer>
+
+<script>
+    if (new URLSearchParams(location.search).has('error')) {
+        document.getElementById('loginError').hidden = false;
+    }
+    document.getElementById('footerYear').textContent = new Date().getFullYear();
+
+    const FEATURES = [
+        ['grid', 'Live Analytics', 'Revenue charts, order stats, monthly goals and top products updated in real time.'],
+        ['box', 'Product Manager', 'Full CRUD for products with images, categories and multiple delivery types.'],
+        ['archive', 'Stock & Keys', 'Track stock levels, get low/out-of-stock warnings and bulk-restock license keys instantly.'],
+        ['key', 'Flexible Delivery', 'Deliver a Discord role, a license key from a pool, plain text or a file/download link.'],
+        ['message-square', 'Embed Builder', 'Build Discord embeds with a live preview and attach working Buy buttons — no code.'],
+        ['dollar', 'Crypto Payments', 'Live BTC / ETH / LTC / SOL / USDT / USDC conversion with QR codes and auto-delivery.'],
+        ['credit-card', 'Card Payments', 'Card & Apple Pay checkout via PayGate, payouts straight to your USDC wallet.'],
+        ['file-text', 'Manual Payments', 'Log cash, PayPal or bank transfers by hand and keep every payment in one ledger.'],
+        ['tag', 'Coupons', 'Percentage discount codes with usage limits and expiry dates.'],
+        ['users', 'Customer Management', 'Order history, ban/unban and spending overview per customer.'],
+        ['server', 'Multi-Server', 'Run the bot across multiple Discord servers from a single dashboard.'],
+        ['message-square', 'Ticket System', 'One-click support ticket channels with role-based access, right from Discord.'],
+        ['download', 'CSV Export', 'Export orders and payments to CSV any time for bookkeeping or audits.'],
+        ['settings', 'Full White-Label', 'Your name, logo, accent color, currency and footer — branded top to bottom.'],
+        ['alert-triangle', 'Maintenance Mode', 'Pause checkouts instantly during restocks or downtime, no code required.']
+    ];
+    document.getElementById('featureGrid').innerHTML = FEATURES.map(([icon, title, desc]) => `
+        <div class="feature-card">
+            <div class="feature-icon">${ICON_PATHS[icon] ? svgIcon(icon) : ''}</div>
+            <h3>${title}</h3>
+            <p class="muted">${desc}</p>
+        </div>`).join('');
+
+    function money(value) {
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR' }).format(value ?? 0);
+    }
+
+    fetch('/api/plans').then(r => r.ok ? r.json() : []).then(plans => {
+        document.getElementById('planGrid').innerHTML = plans.map(p => {
+            const monthly = p.monthlyPrice ?? p.price ?? 0;
+            const yearly = p.yearlyPrice ?? 0;
+            const priceHtml = monthly > 0
+                ? `<div class="plan-price">${money(monthly)} <span>/mo</span></div>`
+                  + `<div class="plan-tagline">or ${money(yearly)}/yr</div>`
+                : `<div class="plan-price">Free</div><div class="plan-tagline">no card required</div>`;
+            return `
+            <div class="plan-card${p.popular ? ' popular' : ''}">
+                <h3>${p.name}</h3>
+                ${priceHtml}
+                <ul class="plan-list">${p.features.map(f => `<li>${svgIcon('check-circle')}${f}</li>`).join('')}</ul>
+                <a class="btn btn-primary" href="/oauth2/authorization/discord" style="width:100%">
+                    ${monthly > 0 ? 'Sign in to upgrade' : 'Get started'}
+                </a>
+            </div>`;
+        }).join('');
+    }).catch(() => {
+        document.getElementById('planGrid').innerHTML = '<p class="muted" style="grid-column:1/-1;text-align:center">Plans unavailable right now.</p>';
+    });
+
+    function svgIcon(name) {
+        return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">${ICON_PATHS[name] || ''}</svg>`;
+    }
+
+    // Branding aus den Shop-Einstellungen (öffentlich)
+    fetch('/api/settings').then(r => r.ok ? r.json() : null).then(s => {
+        if (!s) return;
+        const name = s.shopName || 'Pokal';
+        document.title = name;
+        ['navBrandName', 'footerBrandName', 'footerBrandName2'].forEach(id => document.getElementById(id).textContent = name);
+        if (s.brandColor && /^#[0-9a-fA-F]{6}$/.test(s.brandColor)) {
+            document.documentElement.style.setProperty('--accent', s.brandColor);
+        }
+        if (s.logoUrl) {
+            document.querySelectorAll('.landing-logo-icon, .landing-brand img').forEach(img => img.src = s.logoUrl);
+        }
+        if (s.description) {
+            document.getElementById('heroSub').textContent = s.description;
+        }
+        const links = [];
+        if (s.discordInvite) links.push(`<a href="${s.discordInvite}" target="_blank" rel="noopener">Discord</a>`);
+        document.getElementById('footerLinks').innerHTML = links.join('');
+        if (s.maintenance === 'true') {
+            document.getElementById('maintenanceInfo').hidden = false;
+        }
+    }).catch(() => {});
+</script>
+<script>
+const ICON_PATHS = {
+    'grid': '<rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect>',
+    'box': '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line>',
+    'archive': '<polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line>',
+    'message-square': '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>',
+    'dollar': '<line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>',
+    'credit-card': '<rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line>',
+    'tag': '<path d="M20.59 13.41L13.42 20.58a2 2 0 0 1-2.83 0L2.59 12.58a1.996 1.996 0 0 1-.59-1.42V4a2 2 0 0 1 2-2h7.17c.53 0 1.04.21 1.41.59l8 8a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line>',
+    'server': '<rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line>',
+    'users': '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>',
+    'check-circle': '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline>',
+    'key': '<path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>',
+    'file-text': '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line>',
+    'download': '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line>',
+    'settings': '<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>',
+    'alert-triangle': '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>'
+};
+</script>
+</body>
+</html>
+

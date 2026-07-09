@@ -1,0 +1,70 @@
+server:
+  # Railway (und andere PaaS) geben den Port dynamisch über $PORT vor
+  port: ${PORT:8080}
+  forward-headers-strategy: framework
+
+spring:
+  application:
+    name: shop-bot
+  datasource:
+    # Railway-Postgres liefert PGHOST/PGPORT/… — sonst DB_* (docker-compose) — sonst lokale Defaults
+    url: jdbc:postgresql://${PGHOST:${DB_HOST:localhost}}:${PGPORT:${DB_PORT:5432}}/${PGDATABASE:${DB_NAME:shop}}
+    username: ${PGUSER:${DB_USER:shop}}
+    password: ${PGPASSWORD:${DB_PASSWORD:shop}}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 12MB
+  security:
+    oauth2:
+      client:
+        registration:
+          discord:
+            # Platzhalter, damit die App auch ohne fertige .env startet — Login geht erst mit echten Werten
+            client-id: ${DISCORD_CLIENT_ID:unset}
+            client-secret: ${DISCORD_CLIENT_SECRET:unset}
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/discord"
+            scope: identify
+            client-name: Discord
+        provider:
+          discord:
+            authorization-uri: https://discord.com/oauth2/authorize
+            token-uri: https://discord.com/api/oauth2/token
+            user-info-uri: https://discord.com/api/users/@me
+            user-name-attribute: id
+
+shop:
+  brand-name: ${BRAND_NAME:Pokal}
+  brand-color: ${BRAND_COLOR:#5865F2}
+  base-url: ${BASE_URL:http://localhost:8080}
+  upload-dir: ${UPLOAD_DIR:./uploads}
+  order-expiry-minutes: ${ORDER_EXPIRY_MINUTES:60}
+  open-dashboard: ${OPEN_DASHBOARD:false}
+  discord:
+    token: ${DISCORD_BOT_TOKEN:}
+    guild-id: ${DISCORD_GUILD_ID:}
+    admin-role-id: ${DISCORD_ADMIN_ROLE_ID:}
+    admin-ids: ${ADMIN_IDS:}
+    log-channel-id: ${LOG_CHANNEL_ID:}
+    ticket-category-id: ${TICKET_CATEGORY_ID:}
+    support-role-id: ${SUPPORT_ROLE_ID:}
+  payment:
+    provider: ${PAYMENT_PROVIDER:mock}
+    nowpayments:
+      api-key: ${NOWPAYMENTS_API_KEY:}
+      ipn-secret: ${NOWPAYMENTS_IPN_SECRET:}
+    paygate:
+      wallet: ${PAYGATE_WALLET:}
+      checkout-provider: ${PAYGATE_CHECKOUT_PROVIDER:hosted}
+    stripe:
+      secret-key: ${STRIPE_SECRET_KEY:}
+      webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+
+logging:
+  level:
+    net.dv8tion: INFO

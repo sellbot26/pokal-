@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link rel="icon" type="image/svg+xml" href="/img/logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <button class="brand-switch" id="brandBox">
+            <img src="/img/logo.svg" alt="" class="brand-icon-img">
+            <span class="brand-text">
+                <span class="brand-name" id="brandName">Pokal</span>
+                <span class="brand-sub">Switch server</span>
+            </span>
+            <span class="brand-chevron" data-icon="chevron-down"></span>
+        </button>
+        <select id="guildSwitcher" class="input guild-switcher" hidden></select>
+
+        <nav id="nav">
+            <button data-section="overview" class="nav-btn"><span class="nav-icon" data-icon="grid"></span> Overview</button>
+            <button data-section="products" class="nav-btn"><span class="nav-icon" data-icon="box"></span> Products</button>
+            <button data-section="stock" class="nav-btn"><span class="nav-icon" data-icon="archive"></span> Stock</button>
+            <button data-section="orders" class="nav-btn"><span class="nav-icon" data-icon="file-text"></span> Orders</button>
+            <button data-section="customers" class="nav-btn"><span class="nav-icon" data-icon="users"></span> Customers</button>
+            <button data-section="embeds" class="nav-btn"><span class="nav-icon" data-icon="message-square"></span> Embed Builder</button>
+            <button data-section="payments" class="nav-btn"><span class="nav-icon" data-icon="credit-card"></span> Payments</button>
+            <button data-section="server" class="nav-btn"><span class="nav-icon" data-icon="server"></span> Bot &amp; Servers</button>
+            <button data-section="myorders" class="nav-btn"><span class="nav-icon" data-icon="shopping-bag"></span> My Orders</button>
+        </nav>
+
+        <div class="sidebar-foot">
+            <button class="plan-chip" id="planChip" onclick="showSection('billing')">
+                <span class="plan-chip-badge" id="planChipBadge">FREE</span>
+                <span class="plan-chip-usage" id="planChipUsage">0 / 5 products</span>
+                <span class="plan-chip-arrow" data-icon="chevron-right"></span>
+            </button>
+            <button data-section="settings" class="nav-btn" onclick="showSection('settings')"><span class="nav-icon" data-icon="settings"></span> Settings</button>
+            <div class="user-card">
+                <img id="userAvatar" src="" alt="" class="user-card-avatar" hidden>
+                <span class="user-card-info">
+                    <span class="user-card-name" id="userName"></span>
+                    <span class="user-card-role" id="userRole">Member</span>
+                </span>
+                <button id="logoutBtn" class="user-card-logout" title="Logout"><span data-icon="log-out"></span></button>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main">
+        <div class="topbar">
+            <div class="topbar-user">
+                <div class="topbar-meta">
+                    <span class="topbar-name" id="topbarName"></span>
+                    <span class="topbar-plan" id="topbarPlan">FREE</span>
+                </div>
+                <img id="topbarAvatar" class="topbar-avatar" src="" alt="" hidden>
+            </div>
+        </div>
+        <div id="maintenanceBanner" class="maintenance-banner admin-only" hidden>
+            <span data-icon="alert-triangle"></span>
+            Maintenance mode is active — customers can't check out right now.
+            <button class="btn btn-sm btn-ghost" onclick="showSection('settings')">Settings</button>
+        </div>
+
+        <!-- ===== Overview ===== -->
+        <section id="section-overview" class="section" hidden>
+            <div class="page-head">
+                <h1>Overview</h1>
+                <p class="page-sub">Welcome back to your dashboard</p>
+            </div>
+            <div class="stat-grid" id="statCards"></div>
+
+            <div class="overview-grid">
+                <div class="panel">
+                    <div class="panel-head">
+                        <h3>Revenue</h3>
+                        <div class="range-tabs" id="chartRange">
+                            <button class="range-tab" data-range="week">7 days</button>
+                            <button class="range-tab active" data-range="month">30 days</button>
+                            <button class="range-tab" data-range="year">90 days</button>
+                        </div>
+                    </div>
+                    <div class="chart-wrap"><canvas id="revenueChart"></canvas></div>
+                </div>
+                <div class="panel">
+                    <h3>Orders by Status</h3>
+                    <div id="ordersByStatus"><p class="muted" style="margin-top:14px">No orders yet.</p></div>
+                </div>
+            </div>
+
+            <div class="panel admin-only" id="goalPanel">
+                <div class="panel-head">
+                    <h3>Monthly Goal</h3>
+                    <button class="btn btn-ghost btn-sm" id="editGoalBtn">Change goal</button>
+                </div>
+                <div class="progress"><div class="progress-fill" id="goalFill" style="width:0"></div></div>
+                <div class="muted" id="goalText" style="margin-top:8px"></div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-head">
+                    <h3>Recent Orders</h3>
+                    <a class="link-arrow" onclick="showSection('orders')">View all orders <span data-icon="arrow-right"></span></a>
+                </div>
+                <table class="table" id="recentTable">
+                    <thead><tr><th>Date</th><th>Customer</th><th>Product</th><th>Amount</th><th>Status</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ===== Products ===== -->
+        <section id="section-products" class="section" hidden>
+            <div class="section-head">
+                <h2>Products</h2>
+                <button class="btn btn-primary" id="newProductBtn"><span data-icon="plus"></span> New Product</button>
+            </div>
+            <div class="panel">
+                <table class="table" id="productsTable">
+                    <thead><tr><th>Image</th><th>Name</th><th>Server</th><th>Category</th><th>Price</th><th>Stock</th><th>Delivery</th><th>Status</th><th></th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ===== Stock ===== -->
+        <section id="section-stock" class="section" hidden>
+            <div class="section-head">
+                <h2>Stock</h2>
+                <button class="btn btn-ghost" onclick="loadStock()"><span data-icon="refresh-cw"></span> Refresh</button>
+            </div>
+            <div class="cards" id="stockCards"></div>
+            <div class="panel">
+                <table class="table" id="stockTable">
+                    <thead><tr><th>Product</th><th>Server</th><th>Category</th><th>Delivery</th><th>Stock</th><th>Free Keys</th><th>Status</th><th>Adjust</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ===== Orders ===== -->
+        <section id="section-orders" class="section" hidden>
+            <div class="section-head">
+                <h2>Orders</h2>
+                <div class="row">
+                    <select id="orderFilter" class="input" style="width:auto">
+                        <option value="">All</option>
+                        <option value="PENDING">Pending</option>
+                        <option value="PAID">Paid</option>
+                        <option value="DELIVERED">Delivered</option>
+                        <option value="CANCELLED">Cancelled</option>
+                        <option value="EXPIRED">Expired</option>
+                    </select>
+                    <a class="btn btn-ghost admin-only" href="/api/admin/export/orders.csv"><span data-icon="download"></span> Export CSV</a>
+                </div>
+            </div>
+            <div class="panel">
+                <table class="table" id="ordersTable">
+                    <thead><tr><th>#</th><th>Date</th><th>Customer</th><th>Product</th><th>Amount</th><th>Payment</th><th>Tx</th><th>Status</th><th></th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ===== Payments ===== -->
+        <section id="section-payments" class="section" hidden>
+            <div class="panel" id="myProvidersPanel">
+                <div class="panel-head">
+                    <h3><span data-icon="credit-card"></span> Your Payment Methods</h3>
+                    <a class="link-arrow admin-only" onclick="showSection('settings')">Site defaults &amp; Stripe <span data-icon="arrow-right"></span></a>
+                </div>
+                <p class="muted" style="margin-bottom:14px">Connect your own payout methods — payments for your products go straight to you.</p>
+                <div class="pm-list">
+                    <div class="pm-row">
+                        <div class="pm-head">
+                            <span class="status-dot" id="pmPaygateDot"></span>
+                            <div class="pm-title">
+                                <b>Card &amp; Apple Pay</b>
+                                <span class="muted">via paygate.to — payouts as USDC (Polygon) to your wallet</span>
+                            </div>
+                            <span class="provider-badge" id="pmPaygateBadge">Setup required</span>
+                        </div>
+                        <div class="pm-body">
+                            <div class="row">
+                                <label class="grow">Payout wallet (USDC · Polygon) <input class="input" id="myPgWallet" placeholder="0x…"></label>
+                                <label class="grow">Receipt email <input class="input" id="myPgEmail" type="email" placeholder="you@example.com"></label>
+                            </div>
+                            <small class="muted">Customers pay on the paygate.to checkout page — payouts go straight to your wallet.</small>
+                        </div>
+                    </div>
+                    <div class="pm-row">
+                        <div class="pm-head">
+                            <span class="status-dot" id="pmCryptoDot"></span>
+                            <div class="pm-title">
+                                <b>Crypto</b>
+                                <span class="muted">BTC · ETH · LTC · SOL · USDT via your own NOWPayments account</span>
+                            </div>
+                            <span class="provider-badge" id="pmCryptoBadge">Setup required</span>
+                        </div>
+                        <div class="pm-body">
+                            <div class="row">
+                                <label class="grow">NOWPayments API key <input class="input" id="myNpKey" type="password" placeholder="Leave empty to keep current"></label>
+                                <label class="grow">IPN secret <input class="input" id="myNpSecret" type="password" placeholder="Leave empty to keep current"></label>
+                            </div>
+                            <label>Your crypto wallets (one per line, shown for reference)
+                                <textarea class="input" id="myCryptoWallets" rows="3" placeholder="BTC: bc1…&#10;ETH: 0x…&#10;LTC: ltc1…"></textarea>
+                            </label>
+                            <small class="muted">Create a free account at nowpayments.io, add your wallets there, then paste the API key + IPN secret here.</small>
+                        </div>
+                    </div>
+                    <div class="pm-row">
+                        <div class="pm-head">
+                            <span class="status-dot" id="pmWebhookDot"></span>
+                            <div class="pm-title">
+                                <b>Sale Logs</b>
+                                <span class="muted">Discord webhook — get a message for every completed sale</span>
+                            </div>
+                            <span class="provider-badge" id="pmWebhookBadge">Setup required</span>
+                        </div>
+                        <div class="pm-body">
+                            <label>Discord webhook URL <input class="input" id="myLogWebhook" placeholder="https://discord.com/api/webhooks/…"></label>
+                            <small class="muted">Server Settings → Integrations → Webhooks → New Webhook → Copy URL.</small>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn btn-primary" id="savePaymentConfigBtn" style="margin-top:14px">Save payment methods</button>
+            </div>
+
+            <div class="section-head">
+                <h2>Payments</h2>
+                <div class="row">
+                    <input class="input" id="paymentSearch" placeholder="Search (customer, note)…" style="min-width:200px;width:auto">
+                    <select class="input" id="paymentStatusFilter" style="width:auto">
+                        <option value="">All statuses</option>
+                        <option value="PAID">Paid</option>
+                        <option value="PENDING">Pending</option>
+                        <option value="FAILED">Failed</option>
+                    </select>
+                    <select class="input" id="paymentMethodFilter" style="width:auto">
+                        <option value="">All methods</option>
+                        <option value="KREDITKARTE">Credit Card</option>
+                        <option value="PAYPAL">PayPal</option>
+                        <option value="UEBERWEISUNG">Bank Transfer</option>
+                        <option value="KRYPTO">Crypto</option>
+                        <option value="SONSTIGES">Other</option>
+                    </select>
+                    <a class="btn btn-ghost admin-only" href="/api/admin/export/payments.csv"><span data-icon="download"></span> CSV</a>
+                    <button class="btn btn-primary" id="newPaymentBtn"><span data-icon="plus"></span> Add Payment</button>
+                </div>
+            </div>
+            <div class="panel">
+                <table class="table" id="paymentsTable">
+                    <thead><tr><th>Date</th><th>Customer</th><th>Amount</th><th>Method</th><th>Note</th><th>Status</th><th></th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ===== Customers ===== -->
+        <section id="section-customers" class="section" hidden>
+            <h2>Customers</h2>
+            <div class="panel">
+                <table class="table" id="customersTable">
+                    <thead><tr><th></th><th>Name</th><th>Discord ID</th><th>Orders</th><th>Total Spent</th><th>Last Login</th><th>Status</th><th></th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ===== Embed Builder ===== -->
+        <section id="section-embeds" class="section" hidden>
+            <div class="section-head">
+                <h2>Embed Builder</h2>
+                <div class="row">
+                    <select class="input" id="embedLoadSelect" style="width:auto;min-width:180px">
+                        <option value="">Load embed…</option>
+                    </select>
+                    <button class="btn btn-ghost" id="embedNewBtn"><span data-icon="plus"></span> New</button>
+                    <button class="btn btn-danger btn-sm" id="embedDeleteBtn" hidden><span data-icon="trash-2"></span> Delete</button>
+                </div>
+            </div>
+
+            <div class="embed-layout">
+                <div>
+                    <div class="panel">
+                        <h3>Content</h3>
+                        <label>Embed name (for saving) <input class="input" id="eName" placeholder="e.g. shop-rules"></label>
+                        <label>Message above embed <input class="input" id="eContent" maxlength="2000" placeholder="Optional, e.g. @everyone"></label>
+                        <label>Title <input class="input" id="eTitle" maxlength="256"></label>
+                        <label>Title URL <input class="input" id="eUrl" placeholder="https://…"></label>
+                        <label>Description <textarea class="input" id="eDescription" rows="5" maxlength="4096"></textarea></label>
+                        <div class="row">
+                            <label>Color <input class="input" id="eColor" type="color" value="#6366f1"></label>
+                            <label class="grow" style="align-self:end">
+                                <span class="checkbox" style="margin-top:24px"><input type="checkbox" id="eTimestamp"> Show timestamp</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <h3>Images &amp; Branding</h3>
+                        <label>Thumbnail (small, top right) <input class="input" id="eThumbnail" placeholder="https://…"></label>
+                        <label>Large image <input class="input" id="eImage" placeholder="https://…"></label>
+                        <div class="row">
+                            <label>Author <input class="input" id="eAuthor" maxlength="256"></label>
+                            <label>Author icon <input class="input" id="eAuthorIcon" placeholder="https://…"></label>
+                        </div>
+                        <div class="row">
+                            <label>Footer <input class="input" id="eFooter" maxlength="2048"></label>
+                            <label>Footer icon <input class="input" id="eFooterIcon" placeholder="https://…"></label>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <div class="panel-head">
+                            <h3>Fields</h3>
+                            <button class="btn btn-ghost btn-sm" id="addFieldBtn"><span data-icon="plus"></span> Add field</button>
+                        </div>
+                        <div id="fieldsEditor"></div>
+                    </div>
+
+                    <div class="panel">
+                        <div class="panel-head">
+                            <h3>Buttons</h3>
+                            <button class="btn btn-ghost btn-sm" id="addButtonBtn"><span data-icon="plus"></span> Add button</button>
+                        </div>
+                        <div id="buttonsEditor"></div>
+                    </div>
+
+                    <div class="panel">
+                        <h3>Send</h3>
+                        <div class="row">
+                            <select class="input grow" id="embedChannelSelect"><option value="">Select channel…</option></select>
+                            <button class="btn btn-primary" id="embedSaveBtn"><span data-icon="save"></span> Save</button>
+                            <button class="btn btn-primary" id="embedSendBtn"><span data-icon="send"></span> Send</button>
+                        </div>
+                        <small class="muted">Sending automatically saves the embed.</small>
+                    </div>
+                </div>
+
+                <div class="embed-preview-wrap">
+                    <div class="preview-label">Live Preview</div>
+                    <div class="discord-msg">
+                        <div class="discord-avatar"><img src="/img/logo.svg" alt="" style="width:22px;height:22px"></div>
+                        <div class="discord-body">
+                            <div class="discord-name"><span id="previewBotName">Pokal</span><span class="bot-tag">APP</span></div>
+                            <div class="discord-content" id="pContent"></div>
+                            <div class="d-embed" id="embedPreview"></div>
+                            <div class="d-buttons" id="pButtons"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== Bot & Servers ===== -->
+        <section id="section-server" class="section" hidden>
+            <h2>Bot &amp; Servers</h2>
+            <div class="panel" id="botStatusPanel"></div>
+            <div class="panel">
+                <div class="panel-head">
+                    <h3>Servers</h3>
+                    <a class="btn btn-primary btn-sm" id="inviteBotBtn" href="#" target="_blank" rel="noopener" hidden><span data-icon="plus"></span> Add to another server</a>
+                </div>
+                <div class="guild-grid" id="guildGrid"></div>
+            </div>
+        </section>
+
+        <!-- ===== Settings ===== -->
+        <section id="section-settings" class="section" hidden>
+            <h2>Settings</h2>
+            <div class="settings-layout">
+                <nav class="settings-nav" id="settingsTabs">
+                    <button class="settings-nav-item active admin-only" data-tab="general"><span data-icon="settings"></span> General</button>
+                    <button class="settings-nav-item admin-only" data-tab="branding"><span data-icon="edit-2"></span> Branding</button>
+                    <button class="settings-nav-item admin-only" data-tab="payments"><span data-icon="credit-card"></span> Payments</button>
+                    <button class="settings-nav-item admin-only" data-tab="logs"><span data-icon="file-text"></span> Logs</button>
+                    <button class="settings-nav-item" data-tab="paymentmethods"><span data-icon="credit-card"></span> Payment Methods</button>
+                    <button class="settings-nav-item" data-tab="delivery"><span data-icon="mail"></span> Delivery</button>
+                    <button class="settings-nav-item" data-tab="coupons"><span data-icon="tag"></span> Coupons</button>
+                </nav>
+                <div class="settings-content">
+                    <div id="settingsTabGeneral" class="admin-only">
+                        <div class="panel">
+                            <h3>Shop</h3>
+                            <form id="settingsForm">
+                                <label>Shop name <input class="input" id="sShopName" maxlength="60"></label>
+                                <label>Description <textarea class="input" id="sDescription" rows="3" maxlength="500"></textarea></label>
+                                <div class="row">
+                                    <label>Currency
+                                        <select class="input" id="sCurrency">
+                                            <option value="EUR">EUR</option>
+                                            <option value="USD">USD</option>
+                                        </select>
+                                    </label>
+                                    <label>Monthly goal (revenue) <input class="input" id="sMonthlyGoal" type="number" min="0" step="50"></label>
+                                </div>
+                                <label>Discord invite <input class="input" id="sDiscordInvite" placeholder="https://discord.gg/…"></label>
+                                <label>Support server <input class="input" id="sSupportServer" placeholder="https://discord.gg/…"></label>
+                                <button class="btn btn-primary" type="submit">Save</button>
+                            </form>
+                        </div>
+                        <div class="panel">
+                            <h3>Operations</h3>
+                            <div class="switch-row">
+                                <div class="switch-text">
+                                    <b>Maintenance mode</b>
+                                    <span>Customers can't check out, the bot replies with a notice.</span>
+                                </div>
+                                <label class="switch" style="margin:0"><input type="checkbox" id="sMaintenance"><span class="slider"></span></label>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div id="settingsTabBranding" class="admin-only" hidden>
+                        <div class="panel">
+                            <h3>Branding</h3>
+                            <form id="brandingForm">
+                                <div class="row">
+                                    <label>Accent color <input class="input" id="sBrandColor" type="color" value="#6366f1"></label>
+                                    <label class="grow">Footer text <input class="input" id="sFooterText" maxlength="200"></label>
+                                </div>
+                                <label>Logo URL <input class="input" id="sLogoUrl" placeholder="https://…"></label>
+                                <label>Banner URL <input class="input" id="sBannerUrl" placeholder="https://…"></label>
+                                <label>Social links (one per line) <textarea class="input" id="sSocialLinks" rows="3" placeholder="https://x.com/…&#10;https://t.me/…"></textarea></label>
+                                <button class="btn btn-primary" type="submit">Save</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div id="settingsTabPayments" class="admin-only" hidden>
+                        <div class="panel">
+                            <h3>Site Default Payment Methods</h3>
+                            <p class="muted" style="margin-bottom:14px">Used as fallback whenever a seller hasn't connected their own payment methods.</p>
+                            <div class="pm-list">
+                                <div class="pm-row">
+                                    <div class="pm-head">
+                                        <span class="status-dot" id="sitePaygateDot"></span>
+                                        <div class="pm-title">
+                                            <b>Card &amp; Apple Pay</b>
+                                            <span class="muted">via PayGate — payouts as USDC (Polygon)</span>
+                                        </div>
+                                        <span class="provider-badge" id="sitePaygateBadge">Setup required</span>
+                                    </div>
+                                    <div class="pm-body">
+                                        <div class="row">
+                                            <label class="grow">Payout wallet (USDC · Polygon) <input class="input" id="pgWallet" placeholder="0x…"></label>
+                                            <label class="grow">Receipt email <input class="input" id="pgEmail" type="email" placeholder="shop@example.com"></label>
+                                        </div>
+                                        <small class="muted">Customers pay on the paygate.to checkout page — payouts go straight to this wallet.</small>
+                                        <div style="margin-top:10px"><button class="btn btn-primary btn-sm" id="pgSaveBtn" type="button">Save</button></div>
+                                    </div>
+                                </div>
+                                <div class="pm-row">
+                                    <div class="pm-head">
+                                        <span class="status-dot" id="siteStripeDot"></span>
+                                        <div class="pm-title">
+                                            <b>Stripe</b>
+                                            <span class="muted">Card · Apple Pay · Google Pay via Stripe Checkout</span>
+                                        </div>
+                                        <span class="provider-badge" id="siteStripeBadge">Setup required</span>
+                                    </div>
+                                    <div class="pm-body">
+                                        <div class="row">
+                                            <label class="grow">Secret key <input class="input" id="sStripeSecret" type="password" placeholder="sk_live_… (leave empty to keep current)"></label>
+                                            <label class="grow">Webhook signing secret <input class="input" id="sStripeWebhookSecret" type="password" placeholder="whsec_… (leave empty to keep current)"></label>
+                                        </div>
+                                        <small class="muted">Add a webhook in Stripe → Developers → Webhooks pointing to <code>&lt;your-url&gt;/api/webhook/stripe</code> (event <code>checkout.session.completed</code>), then paste the signing secret here.</small>
+                                        <div style="margin-top:10px"><button class="btn btn-primary btn-sm" id="stripeSaveBtn" type="button">Save Stripe</button></div>
+                                    </div>
+                                </div>
+                                <div class="pm-row">
+                                    <div class="pm-head">
+                                        <span class="status-dot" id="siteCryptoDot"></span>
+                                        <div class="pm-title">
+                                            <b>Crypto</b>
+                                            <span class="muted">BTC · ETH · LTC · SOL · USDT via NOWPayments</span>
+                                        </div>
+                                        <span class="provider-badge" id="siteCryptoBadge">Setup required</span>
+                                    </div>
+                                    <div class="pm-body">
+                                        <p class="muted" style="font-size:12px">Configured via <code>NOWPAYMENTS_API_KEY</code> and <code>PAYMENT_PROVIDER=nowpayments</code> in <code>.env</code> — restart required after changes.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="settingsTabLogs" class="admin-only" hidden>
+                        <div class="panel">
+                            <h3>Logging &amp; Channels</h3>
+                            <p class="muted" style="margin-bottom:14px">Point the bot at Discord channels, mirror everything to a webhook, and choose exactly what gets logged.</p>
+                            <form id="logsForm">
+                                <div class="row">
+                                    <label class="grow">Log channel ID <input class="input" id="sLogChannelId" placeholder="e.g. 123456789012345678"></label>
+                                    <label class="grow">Review channel ID <input class="input" id="sReviewChannelId" placeholder="e.g. 123456789012345678"></label>
+                                </div>
+                                <label>Log webhook URL (everything is mirrored here)
+                                    <input class="input" id="sLogWebhookUrl" placeholder="https://discord.com/api/webhooks/…">
+                                </label>
+                                <small class="muted">Every enabled log below is also posted to this Discord webhook.</small>
+                                <h3 style="margin-top:20px;font-size:14px">Log selection</h3>
+                                <div class="switch-row">
+                                    <div class="switch-text"><b>New orders</b><span>A log when a checkout is created (before payment).</span></div>
+                                    <label class="switch" style="margin:0"><input type="checkbox" id="sLogOrders"><span class="slider"></span></label>
+                                </div>
+                                <div class="switch-row">
+                                    <div class="switch-text"><b>Completed sales</b><span>A log for every paid &amp; delivered order.</span></div>
+                                    <label class="switch" style="margin:0"><input type="checkbox" id="sLogSales"><span class="slider"></span></label>
+                                </div>
+                                <div class="switch-row">
+                                    <div class="switch-text"><b>Errors &amp; system events</b><span>Webhook/payment errors and status changes.</span></div>
+                                    <label class="switch" style="margin:0"><input type="checkbox" id="sLogErrors"><span class="slider"></span></label>
+                                </div>
+                                <button class="btn btn-primary" type="submit" style="margin-top:14px">Save logging</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div id="settingsTabCoupons" hidden>
+                        <div class="panel">
+                            <div class="section-head" style="margin-bottom:16px">
+                                <h3>Coupons</h3>
+                                <button class="btn btn-primary" id="newDiscountBtn"><span data-icon="plus"></span> New Code</button>
+                            </div>
+                            <table class="table" id="discountsTable">
+                                <thead><tr><th>Code</th><th>Server</th><th>Discount</th><th>Redemptions</th><th>Valid Until</th><th>Status</th><th></th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Eigene Zahlungsmethoden + Delivery werden zur Laufzeit hierher verschoben (für alle Nutzer) -->
+                    <div id="settingsTabPaymentMethods" hidden></div>
+                    <div id="settingsTabDelivery" hidden></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== Billing & Plan ===== -->
+        <section id="section-billing" class="section" hidden>
+            <div class="page-head">
+                <h1>Billing &amp; Plans</h1>
+                <p class="page-sub" id="currentPlanSub">You're currently on the Free plan.</p>
+            </div>
+
+            <div class="billing-toggle-wrap">
+                <div class="billing-toggle" id="billingToggle">
+                    <button class="billing-toggle-btn" data-cycle="monthly">Monthly</button>
+                    <button class="billing-toggle-btn active" data-cycle="yearly">Yearly <span class="save-pill">SAVE 20%</span></button>
+                </div>
+            </div>
+
+            <div class="plan-cards" id="billingPlanGrid"></div>
+
+            <div class="panel" style="margin-top:24px">
+                <div class="panel-head">
+                    <h3><span data-icon="key"></span> Redeem a License</h3>
+                </div>
+                <p class="muted" style="margin-bottom:14px">Got a license code from the site owner or a reseller? Redeem it here to upgrade your plan instantly.</p>
+                <div class="row">
+                    <input class="input grow" id="redeemCodeInput" placeholder="Paste your license code…" style="min-width:220px">
+                    <button class="btn btn-primary" id="redeemLicenseBtn">Redeem</button>
+                </div>
+            </div>
+
+            <div class="panel admin-only" style="margin-top:16px">
+                <div class="panel-head">
+                    <h3><span data-icon="key"></span> License Management</h3>
+                </div>
+                <p class="muted" style="margin-bottom:14px">Generate codes to gift a plan upgrade to any user — site owner only.</p>
+                <div class="row" style="margin-bottom:16px;align-items:flex-end;flex-wrap:wrap">
+                    <label style="margin:0">Plan
+                        <select class="input" id="licenseTierSelect" style="width:auto">
+                            <option value="PRO">Pro</option>
+                            <option value="BUSINESS">Business</option>
+                        </select>
+                    </label>
+                    <label style="margin:0">Billing
+                        <select class="input" id="licenseCycleSelect" style="width:auto">
+                            <option value="monthly">Months</option>
+                            <option value="yearly">Years</option>
+                        </select>
+                    </label>
+                    <label style="margin:0">Amount (1–12)
+                        <select class="input" id="licenseCountSelect" style="width:auto"></select>
+                    </label>
+                    <button class="btn btn-ghost" id="generateLicenseBtn"><span data-icon="plus"></span> Generate license</button>
+                </div>
+                <table class="table" id="licensesTable">
+                    <thead><tr><th>Code</th><th>Tier</th><th>Duration</th><th>Status</th><th>Created</th><th></th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ===== Delivery Message ===== -->
+        <section id="section-delivery" class="section" hidden>
+            <div class="page-head">
+                <h1>Delivery Message</h1>
+                <p class="page-sub">Customize the DM your customers receive with their key</p>
+            </div>
+            <div class="delivery-grid">
+                <div class="panel">
+                    <div class="panel-icon-head">
+                        <div class="panel-icon-chip"><span data-icon="mail"></span></div>
+                        <div>
+                            <h3 style="margin-bottom:2px">Order Delivery DM</h3>
+                            <span class="muted" style="font-size:12.5px">Sent to the buyer with their key after a successful payment</span>
+                        </div>
+                    </div>
+                    <label style="margin-top:16px">Title
+                        <input class="input" id="dmTitle" maxlength="120" placeholder="🎉 Your order is ready!">
+                    </label>
+                    <small class="muted">Leave empty to use the default: <b>🎉 Your order is ready!</b></small>
+                    <label style="margin-top:16px">Message (above the key details)
+                        <textarea class="input" id="dmMessage" rows="5" maxlength="1000" placeholder="e.g. Thanks for your purchase! If you enjoy the product, please leave a ⭐ review in our server."></textarea>
+                    </label>
+                    <small class="muted">Optional free text shown above the product / key fields. Leave empty for none.</small>
+                    <div class="row" style="margin-top:18px">
+                        <button class="btn btn-primary" id="dmSaveBtn"><span data-icon="save"></span> Save Changes</button>
+                        <button class="btn btn-ghost" id="dmResetBtn"><span data-icon="refresh-cw"></span> Reset to Default</button>
+                    </div>
+                </div>
+                <div class="panel">
+                    <h3>Live Preview</h3>
+                    <div class="discord-msg" style="margin-top:14px">
+                        <div class="discord-avatar"><img src="/img/logo.svg" alt="" style="width:24px;height:24px"></div>
+                        <div class="discord-body">
+                            <div class="discord-name"><span id="dmPreviewBot">Pokal</span><span class="bot-tag">APP</span></div>
+                            <div class="d-embed" style="border-left-color:var(--green)">
+                                <div class="d-main">
+                                    <div class="d-title" id="dmPreviewTitle">🎉 Your order is ready!</div>
+                                    <div class="d-desc" id="dmPreviewMessage" hidden></div>
+                                    <div class="d-field-name" style="margin-top:6px">📦 Product</div>
+                                    <div class="d-field-value">Example Product</div>
+                                    <div class="d-field-name" style="margin-top:6px">🔑 License / Key</div>
+                                    <div class="d-field-value"><code>ABCD-1234-EXAMPLE-KEY</code></div>
+                                    <div class="d-field-name" style="margin-top:6px">📖 How to use</div>
+                                    <div class="d-field-value">Follow the setup guide.</div>
+                                    <div class="d-footer" id="dmPreviewFooter">Pokal</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="muted" style="font-size:12px;margin-top:14px">Product name, key, download link and instructions come from each order automatically.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== My Orders ===== -->
+        <section id="section-myorders" class="section" hidden>
+            <div class="page-head">
+                <h1>My Orders</h1>
+                <p class="page-sub">Your purchases and license keys</p>
+            </div>
+            <div id="myOrdersList" class="order-list"></div>
+        </section>
+    </main>
+</div>
+
+<!-- Product Modal -->
+<div class="modal-backdrop" id="productModal" hidden>
+    <div class="modal">
+        <h3 id="productModalTitle">New Product</h3>
+        <form id="productForm">
+            <input type="hidden" id="pId">
+            <label>Server <select class="input" id="pGuildId" required><option value="">Select a server…</option></select></label>
+            <label>Name <input class="input" id="pName" required></label>
+            <label>Description <textarea class="input" id="pDescription" rows="3"></textarea></label>
+            <div class="row">
+                <label>Price <input class="input" id="pPrice" type="number" step="0.01" min="0.01" required></label>
+                <label>Category <input class="input" id="pCategory"></label>
+                <label>Stock (-1 = unlimited) <input class="input" id="pStock" type="number" value="-1"></label>
+            </div>
+            <div class="row">
+                <label>Delivery type
+                    <select class="input" id="pDeliveryType">
+                        <option value="TEXT">Text via DM</option>
+                        <option value="KEY">License key from pool</option>
+                        <option value="ROLE">Discord role</option>
+                        <option value="FILE">Download link</option>
+                    </select>
+                </label>
+                <label class="grow"><span id="pDeliveryDataLabel">Delivery text (sent via DM)</span>
+                    <input class="input" id="pDeliveryData">
+                </label>
+            </div>
+            <label>How to use (sent with every delivery)
+                <textarea class="input" id="pInstructions" rows="3" placeholder="e.g. 1. Download the tool&#10;2. Run as admin&#10;3. Paste your key"></textarea>
+            </label>
+            <label>Image
+                <div class="row">
+                    <input class="input grow" id="pImageUrl" placeholder="https://… or upload →">
+                    <input type="file" id="pImageFile" accept="image/*" hidden>
+                    <button type="button" class="btn btn-ghost" id="uploadImageBtn"><span data-icon="upload"></span> Upload</button>
+                </div>
+            </label>
+            <label id="keysField" hidden>New keys (one per line or comma-separated)
+                <textarea class="input" id="pKeys" rows="3" placeholder="KEY-AAAA-1111&#10;KEY-BBBB-2222"></textarea>
+            </label>
+            <label class="checkbox"><input type="checkbox" id="pActive" checked> Active (visible in shop)</label>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" data-close>Cancel</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Coupon Modal -->
+<div class="modal-backdrop" id="discountModal" hidden>
+    <div class="modal">
+        <h3>New Coupon</h3>
+        <form id="discountForm">
+            <label>Server <select class="input" id="dGuildId" required><option value="">Select a server…</option></select></label>
+            <label>Code <input class="input" id="dCode" required placeholder="SUMMER25"></label>
+            <div class="row">
+                <label>Discount (%) <input class="input" id="dPercent" type="number" min="1" max="100" required></label>
+                <label>Max redemptions (0 = unlimited) <input class="input" id="dMaxUses" type="number" min="0" value="0"></label>
+                <label>Valid (days, empty = forever) <input class="input" id="dValidDays" type="number" min="1"></label>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" data-close>Cancel</button>
+                <button type="submit" class="btn btn-primary">Create</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Payment Modal (customer) -->
+<div class="modal-backdrop" id="paymentModal" hidden>
+    <div class="modal modal-center">
+        <h3>Pay Now</h3>
+        <div id="paymentDetails"></div>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-primary" data-close>Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Manual Payment Modal -->
+<div class="modal-backdrop" id="manualPaymentModal" hidden>
+    <div class="modal">
+        <h3 id="paymentModalTitle">New Payment</h3>
+        <form id="manualPaymentForm">
+            <input type="hidden" id="mpId">
+            <label>Recipient / Customer * <input class="input" id="mpCustomer" required maxlength="100"></label>
+            <div class="row">
+                <label>Amount * <input class="input" id="mpAmount" type="number" step="0.01" min="0.01" required></label>
+                <label>Payment method
+                    <select class="input" id="mpMethod">
+                        <option value="KREDITKARTE">Credit Card</option>
+                        <option value="PAYPAL">PayPal</option>
+                        <option value="UEBERWEISUNG">Bank Transfer</option>
+                        <option value="KRYPTO">Crypto</option>
+                        <option value="SONSTIGES">Other</option>
+                    </select>
+                </label>
+            </div>
+            <div class="row">
+                <label>Date <input class="input" id="mpDate" type="datetime-local"></label>
+                <label>Status
+                    <select class="input" id="mpStatus">
+                        <option value="PAID">Paid</option>
+                        <option value="PENDING">Pending</option>
+                        <option value="FAILED">Failed</option>
+                    </select>
+                </label>
+            </div>
+            <label>Description / note <textarea class="input" id="mpNote" rows="2" maxlength="500"></textarea></label>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" data-close>Cancel</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Restock Keys Modal -->
+<div class="modal-backdrop" id="restockModal" hidden>
+    <div class="modal">
+        <h3><span data-icon="key"></span> Restock License Keys</h3>
+        <p class="muted" id="restockProductLabel" style="margin-bottom:14px"></p>
+        <form id="restockForm">
+            <input type="hidden" id="rProductId">
+            <label>New keys (one per line or comma-separated)
+                <textarea class="input" id="rKeys" rows="6" placeholder="KEY-AAAA-1111&#10;KEY-BBBB-2222&#10;KEY-CCCC-3333" required></textarea>
+            </label>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" data-close>Cancel</button>
+                <button type="submit" class="btn btn-primary"><span data-icon="upload"></span> Add keys</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>
+
