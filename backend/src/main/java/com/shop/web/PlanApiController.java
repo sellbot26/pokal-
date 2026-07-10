@@ -56,7 +56,7 @@ public class PlanApiController {
         PlanService.Tier tier = planService.tierFor(user);
         long productsUsed = siteAdmin
                 ? productRepo.findAll().stream().filter(p -> !PlanService.PLATFORM_CATEGORY.equals(p.getCategory())).count()
-                : planService.activeProductCount(guildAccess.managedGuildIds(id));
+                : planService.activeProductCountForOwner(id);
         long embedsUsed = siteAdmin ? embedRepo.count() : embedRepo.countByOwnerId(id);
         java.util.Map<String, Object> result = new java.util.LinkedHashMap<>();
         result.put("tier", tier);

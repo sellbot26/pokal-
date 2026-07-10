@@ -30,9 +30,9 @@ public class DiscountApiController {
     }
 
     @PostMapping("/api/admin/discounts")
-    public DiscountCode create(@RequestBody DiscountRequest req) {
+    public DiscountCode create(@RequestBody DiscountRequest req, @AuthenticationPrincipal OAuth2User principal) {
         if (req.guildId() == null || req.guildId().isBlank()) throw new IllegalArgumentException("Bitte einen Server auswählen.");
-        return createDiscount(req);
+        return createDiscount(req, principal.getAttribute("id"));
     }
 
     @PutMapping("/api/admin/discounts/{id}/toggle")
@@ -49,8 +49,9 @@ public class DiscountApiController {
 
     @GetMapping("/api/my/discounts")
     public List<DiscountCode> myList(@AuthenticationPrincipal OAuth2User principal) {
-        var guilds = guildAccess.managedGuildIds(principal.getAttribute("id"));
-        return discountRepo.findAll().stream().filter(d -> guilds.contains(d.getGuildId())).toList();
+        String myId = principal.getAttribute("id");
+        // Pro-Account-Isolation: nur selbst angelegte Codes
+        return discountRepo.findAll().stream().filter(d -> myId.equals(d.getOwnerId())).toList();
     }
 
     @PostMapping("/api/my/discounts")
@@ -58,7 +59,7 @@ public class DiscountApiController {
         String id = principal.getAttribute("id");
         if (req.guildId() == null || req.guildId().isBlank()) throw new IllegalArgumentException("Please select a server.");
         if (!guildAccess.manages(id, req.guildId())) throw new SecurityException("You don't manage this server.");
-        return createDiscount(req);
+        return createDiscount(req, id);
     }
 
     @PutMapping("/api/my/discounts/{id}/toggle")
@@ -73,7 +74,7 @@ public class DiscountApiController {
 
     // ===================== Gemeinsame Helfer =====================
 
-    private DiscountCode createDiscount(DiscountRequest req) {
+    private DiscountCode createDiscount(DiscountRequest req, String ownerId) {
         if (req.code() == null || req.code().isBlank()) throw new IllegalArgumentException("Code fehlt.");
         if (req.percent() == null || req.percent() < 1 || req.percent() > 100)
             throw new IllegalArgumentException("Prozent muss zwischen 1 und 100 liegen.");
@@ -82,6 +83,7 @@ public class DiscountApiController {
             throw new IllegalArgumentException("Code existiert auf diesem Server bereits.");
         DiscountCode dc = new DiscountCode();
         dc.setGuildId(req.guildId());
+        dc.setOwnerId(ownerId);
         dc.setCode(code);
         dc.setPercent(req.percent());
         if (req.maxUses() != null) dc.setMaxUses(Math.max(0, req.maxUses()));
@@ -108,8 +110,9 @@ public class DiscountApiController {
 
     private void requireAccess(DiscountCode dc, String tenantId, boolean siteAdmin) {
         if (siteAdmin) return;
-        if (!guildAccess.manages(tenantId, dc.getGuildId())) {
-            throw new SecurityException("You don't manage this server.");
+        // Pro-Account-Isolation: nur der Ersteller darf seinen eigenen Code ändern
+        if (tenantId == null || !tenantId.equals(dc.getOwnerId())) {
+            throw new SecurityException("This coupon belongs to another account.");
         }
     }
 }

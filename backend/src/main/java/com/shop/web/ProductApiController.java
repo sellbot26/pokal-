@@ -90,10 +90,11 @@ public class ProductApiController {
     /** Eigene Produkte (aktiv + inaktiv) für die "My Shop"-Verwaltungsansicht — nur die Server, die der Nutzer selbst verwaltet. */
     @GetMapping("/api/my/products")
     public List<Product> myProducts(@RequestParam(required = false) String guildId, @AuthenticationPrincipal OAuth2User principal) {
-        Set<String> allowed = guildAccess.managedGuildIds(principal.getAttribute("id"));
+        String myId = principal.getAttribute("id");
+        // Pro-Account-Isolation: nur Produkte, die DIESER Nutzer selbst angelegt hat
         return productRepo.findAll().stream()
                 .filter(p -> !PlanService.PLATFORM_CATEGORY.equals(p.getCategory()))
-                .filter(p -> allowed.contains(p.getGuildId()))
+                .filter(p -> myId.equals(p.getOwnerId()))
                 .filter(p -> guildId == null || guildId.isBlank() || guildId.equals(p.getGuildId()))
                 .toList();
     }
@@ -142,8 +143,7 @@ public class ProductApiController {
             throw new IllegalArgumentException("Produktname existiert auf diesem Server bereits.");
         if (!siteAdmin) {
             ShopUser actor = userRepo.findById(creatorId).orElseThrow();
-            Set<String> myGuilds = guildAccess.managedGuildIds(creatorId);
-            planService.assertCanAddProduct(actor, false, myGuilds);
+            planService.assertCanAddProduct(actor, false);
             assertCanUseDeliveryType(actor, req.deliveryType());
         }
         Product p = new Product();
@@ -202,10 +202,10 @@ public class ProductApiController {
     }
 
     private List<Map<String, Object>> stockRows(String tenantId, String guildId, boolean siteAdmin) {
-        Set<String> allowedGuilds = siteAdmin ? null : guildAccess.managedGuildIds(tenantId);
         return productRepo.findAll().stream()
                 .filter(p -> !PlanService.PLATFORM_CATEGORY.equals(p.getCategory()))
-                .filter(p -> allowedGuilds == null || allowedGuilds.contains(p.getGuildId()))
+                // Site-Admin sieht alles, Tenant nur seine eigenen Produkte
+                .filter(p -> siteAdmin || (tenantId != null && tenantId.equals(p.getOwnerId())))
                 .filter(p -> guildId == null || guildId.isBlank() || guildId.equals(p.getGuildId()))
                 .<Map<String, Object>>map(p -> {
                     java.util.Map<String, Object> row = new java.util.LinkedHashMap<>();
@@ -242,8 +242,9 @@ public class ProductApiController {
 
     private void requireAccess(Product p, String tenantId, boolean siteAdmin) {
         if (siteAdmin) return;
-        if (!guildAccess.manages(tenantId, p.getGuildId())) {
-            throw new SecurityException("You don't manage this product's server.");
+        // Pro-Account-Isolation: nur der Ersteller darf sein eigenes Produkt bearbeiten
+        if (tenantId == null || !tenantId.equals(p.getOwnerId())) {
+            throw new SecurityException("This product belongs to another account.");
         }
     }
 

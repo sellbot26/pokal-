@@ -129,12 +129,34 @@ public class StatsService {
                 .toList();
     }
 
+    /** Map productId -> ownerId für die pro-Account-Filterung. */
+    private Map<Long, String> productOwners() {
+        Map<Long, String> result = new HashMap<>();
+        for (Product p : productRepo.findAll()) result.put(p.getId(), p.getOwnerId());
+        return result;
+    }
+
+    private List<Order> ordersForOwner(String ownerId) {
+        Map<Long, String> owners = productOwners();
+        return orderRepo.findAll().stream()
+                .filter(o -> ownerId != null && ownerId.equals(owners.get(o.getProductId())))
+                .toList();
+    }
+
+    /** Pro-Account-Statistik: nur Bestellungen für die eigenen Produkte. */
+    public Stats getStatsForOwner(String ownerId) {
+        return getStatsFor(ordersForOwner(ownerId));
+    }
+
     public Stats getStatsFor(Set<String> guildIds) {
+        return getStatsFor(ordersForGuilds(guildIds));
+    }
+
+    private Stats getStatsFor(List<Order> orders) {
         ZoneId zone = ZoneId.systemDefault();
         Instant todayStart = LocalDate.now(zone).atStartOfDay(zone).toInstant();
         Instant monthStart = LocalDate.now(zone).withDayOfMonth(1).atStartOfDay(zone).toInstant();
         Instant activeCutoff = Instant.now().minus(30, ChronoUnit.DAYS);
-        List<Order> orders = ordersForGuilds(guildIds);
 
         var paid = orders.stream()
                 .filter(o -> OrderService.REVENUE_STATUSES.contains(o.getStatus()))
@@ -206,6 +228,55 @@ public class StatsService {
         Map<Long, String> guilds = productGuilds();
         for (Order o : orderRepo.findByStatusInAndPaidAtAfter(OrderService.REVENUE_STATUSES, cutoff)) {
             if (!guildIds.contains(guilds.get(o.getProductId()))) continue;
+            String key = fmt.format(o.getPaidAt().atZone(zone));
+            buckets.computeIfPresent(key, (k, v) -> v.add(o.getTotalPrice()));
+        }
+        for (ManualPayment p : manualPaymentRepo.findByStatusAndPaymentDateAfter(ManualPayment.Status.PAID, cutoff)) {
+            if (ownerId == null || !ownerId.equals(p.getOwnerId())) continue;
+            String key = fmt.format(p.getPaymentDate().atZone(zone));
+            buckets.computeIfPresent(key, (k, v) -> v.add(p.getAmount()));
+        }
+        return buckets.entrySet().stream()
+                .map(e -> new SeriesPoint(e.getKey(), e.getValue()))
+                .toList();
+    }
+
+    /** Umsatzverlauf nur für die EIGENEN Produkte + eigene manuelle Zahlungen (pro-Account-Isolation). */
+    public List<SeriesPoint> revenueSeriesForOwner(String range, String ownerId) {
+        ZoneId zone = ZoneId.systemDefault();
+        ZonedDateTime now = ZonedDateTime.now(zone);
+        Map<String, BigDecimal> buckets = new LinkedHashMap<>();
+        DateTimeFormatter fmt;
+        Instant cutoff;
+        switch (range == null ? "month" : range) {
+            case "day" -> {
+                fmt = DateTimeFormatter.ofPattern("HH:00");
+                ZonedDateTime start = now.minusHours(23).truncatedTo(ChronoUnit.HOURS);
+                cutoff = start.toInstant();
+                for (int i = 0; i < 24; i++) buckets.put(fmt.format(start.plusHours(i)), BigDecimal.ZERO);
+            }
+            case "week" -> {
+                fmt = DateTimeFormatter.ofPattern("dd.MM.");
+                ZonedDateTime start = now.minusDays(6).truncatedTo(ChronoUnit.DAYS);
+                cutoff = start.toInstant();
+                for (int i = 0; i < 7; i++) buckets.put(fmt.format(start.plusDays(i)), BigDecimal.ZERO);
+            }
+            case "year" -> {
+                fmt = DateTimeFormatter.ofPattern("MM.yy");
+                ZonedDateTime start = now.minusMonths(11).withDayOfMonth(1).truncatedTo(ChronoUnit.DAYS);
+                cutoff = start.toInstant();
+                for (int i = 0; i < 12; i++) buckets.put(fmt.format(start.plusMonths(i)), BigDecimal.ZERO);
+            }
+            default -> {
+                fmt = DateTimeFormatter.ofPattern("dd.MM.");
+                ZonedDateTime start = now.minusDays(29).truncatedTo(ChronoUnit.DAYS);
+                cutoff = start.toInstant();
+                for (int i = 0; i < 30; i++) buckets.put(fmt.format(start.plusDays(i)), BigDecimal.ZERO);
+            }
+        }
+        Map<Long, String> owners = productOwners();
+        for (Order o : orderRepo.findByStatusInAndPaidAtAfter(OrderService.REVENUE_STATUSES, cutoff)) {
+            if (ownerId == null || !ownerId.equals(owners.get(o.getProductId()))) continue;
             String key = fmt.format(o.getPaidAt().atZone(zone));
             buckets.computeIfPresent(key, (k, v) -> v.add(o.getTotalPrice()));
         }

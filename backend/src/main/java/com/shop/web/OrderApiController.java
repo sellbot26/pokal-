@@ -111,14 +111,15 @@ public class OrderApiController {
     @GetMapping("/api/my/shop-orders")
     public List<Map<String, Object>> myShopOrders(@RequestParam(required = false) String status,
                                                     @AuthenticationPrincipal OAuth2User principal) {
-        Set<String> myGuilds = guildAccess.managedGuildIds(principal.getAttribute("id"));
+        String myId = principal.getAttribute("id");
         List<Order> orders = (status == null || status.isBlank())
                 ? orderRepo.findAllByOrderByCreatedAtDesc()
                 : orderRepo.findByStatusOrderByCreatedAtDesc(Order.Status.valueOf(status));
+        // Pro-Account-Isolation: nur Bestellungen für die EIGENEN Produkte
         return orders.stream()
                 .filter(o -> {
                     Product p = productRepo.findById(o.getProductId()).orElse(null);
-                    return p != null && myGuilds.contains(p.getGuildId());
+                    return p != null && myId.equals(p.getOwnerId());
                 })
                 .map(this::orderWithPayment)
                 .toList();
@@ -143,8 +144,8 @@ public class OrderApiController {
                 .orElseThrow(() -> new IllegalArgumentException("Order not found."));
         Product product = productRepo.findById(order.getProductId())
                 .orElseThrow(() -> new IllegalArgumentException("Product not found."));
-        if (!guildAccess.manages(tenantId, product.getGuildId())) {
-            throw new SecurityException("You don't manage this order's server.");
+        if (tenantId == null || !tenantId.equals(product.getOwnerId())) {
+            throw new SecurityException("This order belongs to another account.");
         }
     }
 

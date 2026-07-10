@@ -24,6 +24,9 @@ public class DiscountCode {
     /** Discord-Server, dem dieser Code gehört — Codes sind pro Server getrennt. */
     private String guildId;
 
+    /** Nutzer, der diesen Code angelegt hat — für pro-Account-Isolation im Dashboard. */
+    private String ownerId;
+
     /** Rabatt in Prozent (1-100) */
     private int percent;
 

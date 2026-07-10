@@ -162,10 +162,20 @@ public class PlanService {
                 .count();
     }
 
-    public void assertCanAddProduct(ShopUser actor, boolean siteAdmin, Set<String> managedGuildIds) {
+    /** Aktive Produkte, die genau diesem Nutzer gehören (pro-Account-Isolation). */
+    public long activeProductCountForOwner(String ownerId) {
+        if (ownerId == null) return 0;
+        return productRepo.findAll().stream()
+                .filter(Product::isActive)
+                .filter(p -> !PLATFORM_CATEGORY.equals(p.getCategory()))
+                .filter(p -> ownerId.equals(p.getOwnerId()))
+                .count();
+    }
+
+    public void assertCanAddProduct(ShopUser actor, boolean siteAdmin) {
         if (siteAdmin) return; // Site-Betreiber ist von allen Limits ausgenommen
         Tier t = tierFor(actor);
-        if (activeProductCount(managedGuildIds) >= t.productLimit()) {
+        if (activeProductCountForOwner(actor.getId()) >= t.productLimit()) {
             throw new IllegalStateException("Your " + t.name() + " plan allows up to " + t.productLimit()
                     + " active products. Upgrade your plan to add more.");
         }

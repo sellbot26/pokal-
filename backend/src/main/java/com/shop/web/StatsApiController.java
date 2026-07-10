@@ -38,14 +38,14 @@ public class StatsApiController {
 
     @GetMapping("/api/my/stats")
     public StatsService.Stats myStats(@AuthenticationPrincipal OAuth2User principal) {
-        return statsService.getStatsFor(guildAccess.managedGuildIds(principal.getAttribute("id")));
+        // Pro-Account-Isolation: nur die eigenen Produkte/Umsätze
+        return statsService.getStatsForOwner(principal.getAttribute("id"));
     }
 
     @GetMapping("/api/my/stats/series")
     public List<StatsService.SeriesPoint> mySeries(@RequestParam(defaultValue = "month") String range,
                                                     @AuthenticationPrincipal OAuth2User principal) {
-        String id = principal.getAttribute("id");
-        return statsService.revenueSeriesFor(range, guildAccess.managedGuildIds(id), id);
+        return statsService.revenueSeriesForOwner(range, principal.getAttribute("id"));
     }
 
     /** Live-Krypto-Kurse (CoinGecko), für alle eingeloggten Nutzer sichtbar. */

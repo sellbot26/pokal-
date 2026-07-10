@@ -54,11 +54,12 @@ public class CustomerApiController {
     /** Kunden, die bei diesem Nutzer (auf seinen eigenen Servern) gekauft haben — Umsatz/Anzahl nur dafür. */
     @GetMapping("/api/my/shop-customers")
     public List<Map<String, Object>> myCustomers(@AuthenticationPrincipal OAuth2User principal) {
-        Set<String> myGuilds = guildAccess.managedGuildIds(principal.getAttribute("id"));
+        String myId = principal.getAttribute("id");
+        // Pro-Account-Isolation: nur Käufer der EIGENEN Produkte
         Map<String, List<Order>> ordersByBuyer = new HashMap<>();
         for (Order o : orderRepo.findAll()) {
             Product p = productRepo.findById(o.getProductId()).orElse(null);
-            if (p == null || !myGuilds.contains(p.getGuildId())) continue;
+            if (p == null || !myId.equals(p.getOwnerId())) continue;
             ordersByBuyer.computeIfAbsent(o.getUserId(), k -> new java.util.ArrayList<>()).add(o);
         }
         List<Map<String, Object>> result = new java.util.ArrayList<>();
