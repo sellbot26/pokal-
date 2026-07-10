@@ -131,6 +131,20 @@ public class PlanService {
     }
 
     /**
+     * Owner-Override: setzt den Plan eines Nutzers direkt — darf auch DOWNGRADEN
+     * (z. B. Plan wegnehmen = FREE). days &le; 0 = unbegrenzt (kein Ablauf).
+     */
+    @Transactional
+    public void adminSetPlan(ShopUser user, String tierId, int days) {
+        if (!TIERS.containsKey(tierId)) throw new IllegalArgumentException("Unknown plan: " + tierId);
+        user.setPlanTier(tierId);
+        user.setPlanExpiresAt("FREE".equals(tierId) || days <= 0
+                ? null
+                : Instant.now().plus(days, java.time.temporal.ChronoUnit.DAYS));
+        userRepo.save(user);
+    }
+
+    /**
      * Schaltet den Plan für einen Nutzer frei (Kauf oder Lizenz) — downgraded nie.
      * @param days Laufzeit in Tagen (0 = unbegrenzt). Gleicher Tier mit Restlaufzeit → wird verlängert.
      */

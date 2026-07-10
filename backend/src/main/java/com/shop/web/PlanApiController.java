@@ -119,4 +119,37 @@ public class PlanApiController {
         planService.revokeLicense(id);
         return Map.of("status", "revoked");
     }
+
+    // ===== Nutzer-Pläne verwalten: Plan setzen oder wegnehmen (Site-Admin only) =====
+
+    public record SetPlanRequest(String tier, Integer days) {}
+
+    /** Alle Nutzer mit ihrem aktuellen Plan — für die Owner-Verwaltung. */
+    @GetMapping("/api/admin/users")
+    public List<Map<String, Object>> users() {
+        return userRepo.findAll().stream()
+                .sorted(java.util.Comparator.comparing((ShopUser u) -> u.getUsername() == null ? "" : u.getUsername().toLowerCase()))
+                .map(u -> {
+                    Map<String, Object> m = new java.util.LinkedHashMap<>();
+                    m.put("id", u.getId());
+                    m.put("username", u.getUsername());
+                    m.put("avatar", u.getAvatar() == null ? "" : u.getAvatar());
+                    m.put("tier", planService.tierFor(u).id());   // effektiver Tier (nach Ablauf)
+                    m.put("storedTier", u.getPlanTier() == null ? "FREE" : u.getPlanTier());
+                    m.put("expiresAt", u.getPlanExpiresAt() == null ? "" : u.getPlanExpiresAt().toString());
+                    m.put("isSiteAdmin", guildAccess.isSiteAdmin(u.getId()));
+                    m.put("banned", u.isBanned());
+                    return m;
+                }).toList();
+    }
+
+    /** Setzt oder entfernt (tier=FREE) den Plan eines Nutzers. days &le; 0 = unbegrenzt. */
+    @PutMapping("/api/admin/users/{id}/plan")
+    public Map<String, Object> setUserPlan(@PathVariable String id, @RequestBody SetPlanRequest req) {
+        ShopUser user = userRepo.findById(id).orElseThrow(() -> new IllegalArgumentException("User not found."));
+        String tier = req.tier() == null ? "FREE" : req.tier().toUpperCase();
+        int days = req.days() == null ? 0 : req.days();
+        planService.adminSetPlan(user, tier, days);
+        return Map.of("id", user.getId(), "tier", planService.tierFor(user).id());
+    }
 }

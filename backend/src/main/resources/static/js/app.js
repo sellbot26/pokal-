@@ -1144,6 +1144,38 @@ async function loadBillingSection() {
         renderPlanGrid();
     } catch (e) { toast(e.message, true); }
     loadLicenses();
+    loadUserPlans();
+}
+
+async function loadUserPlans() {
+    if (!me.admin) return;
+    try {
+        const users = await api('/api/admin/users');
+        const opt = (cur, v, label) => `<option value="${v}"${cur === v ? ' selected' : ''}>${label}</option>`;
+        $('#userPlansTable tbody').innerHTML = users.map(u => {
+            const cls = u.tier === 'PRO' ? 'pro' : u.tier === 'BUSINESS' ? 'business' : '';
+            const expires = u.expiresAt ? DATE.format(new Date(u.expiresAt)) : (u.tier === 'FREE' ? '—' : '∞');
+            const setter = u.isSiteAdmin
+                ? '<span class="muted">Owner</span>'
+                : `<select class="input" style="width:auto" data-setplan="${esc(u.id)}">${opt(u.tier,'FREE','Free (remove)')}${opt(u.tier,'PRO','Pro')}${opt(u.tier,'BUSINESS','Business')}</select>`;
+            return `<tr>
+                <td>${u.avatar ? `<img class="thumb" style="border-radius:50%" src="${esc(u.avatar)}" alt="">` : icon('users')}</td>
+                <td><b>${esc(u.username || u.id)}</b>${u.isSiteAdmin ? ' <span class="plan-lock">OWNER</span>' : ''}<br><small class="muted">${esc(u.id)}</small></td>
+                <td><span class="plan-badge ${cls}">${esc(u.tier)}</span></td>
+                <td>${expires}</td>
+                <td>${setter}</td>
+            </tr>`;
+        }).join('') || '<tr><td colspan="5" class="muted">No users yet</td></tr>';
+
+        $$('#userPlansTable [data-setplan]').forEach(sel => sel.addEventListener('change', async () => {
+            const uid = sel.dataset.setplan;
+            try {
+                await api(`/api/admin/users/${uid}/plan`, { method: 'PUT', body: { tier: sel.value, days: 0 } });
+                toast(sel.value === 'FREE' ? 'Plan removed' : `Plan set to ${sel.value}`);
+                loadUserPlans();
+            } catch (e) { toast(e.message, true); }
+        }));
+    } catch (e) { toast(e.message, true); }
 }
 
 function renderPlanGrid() {
@@ -1216,6 +1248,8 @@ function initLicenses() {
             loadLicenses();
         } catch (e) { toast(e.message, true); }
     });
+
+    $('#refreshUserPlansBtn')?.addEventListener('click', loadUserPlans);
 
     $('#redeemLicenseBtn').addEventListener('click', async () => {
         const code = $('#redeemCodeInput').value.trim();
