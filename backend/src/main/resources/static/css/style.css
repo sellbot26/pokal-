@@ -1577,6 +1577,9 @@ h1, h2, h3, .brand-name, .plan-price, .stat-card-value, .plan-card-name,
 /* Stat-Cards: feine Akzent-Kante oben — Dashboard-Identität */
 .stat-card { border-top: 2px solid color-mix(in srgb, var(--accent) 55%, transparent); }
 
+/* Neues P-Logo: transparentes PNG, kein schwarzer Kasten dahinter */
+.brand-icon-img { background: transparent; border-radius: 0; }
+
 /* Landing: nüchtern + feines Punktraster statt Aurora */
 .landing-body {
     background-image: radial-gradient(circle, color-mix(in srgb, var(--accent) 9%, transparent) 1px, transparent 1px);

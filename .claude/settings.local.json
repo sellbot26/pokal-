@@ -13,7 +13,11 @@
       "Bash(git push *)",
       "Bash(railway add *)",
       "Bash(railway service *)",
-      "Bash(railway up *)"
+      "Bash(railway up *)",
+      "Bash(curl -s -m 12 https://www.pokal.shop/api/settings)",
+      "Bash(curl -s -m 12 https://www.pokal.shop/css/style.css)",
+      "Bash(grep -oE '--accent: #8b95ff|--bg: #060607|border-radius: 100px')",
+      "Bash(railway logs *)"
     ]
   }
 }
