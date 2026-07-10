@@ -1494,40 +1494,40 @@ input[type="color"].input { height: 44px; }
     background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent);
 }
 
-/* ===== Pokal Design Refresh — flat, warm, trophy-gold ===== */
+/* ===== Pokal Design Refresh — black & ice-blue, sharp ===== */
 
 :root {
-    --accent: #e3a63a;
-    --accent-2: #caa24f;
-    --radius: 10px;
-    --radius-sm: 8px;
+    --accent: #4d9fff;
+    --accent-2: #7cc0ff;
+    --radius: 8px;
+    --radius-sm: 6px;
 }
 
 [data-theme="dark"] {
-    --bg: #0b0a08;
-    --bg-soft: #100e0b;
-    --panel: #151210;
-    --panel-2: #1c1815;
-    --border: rgba(255, 255, 255, 0.07);
-    --border-strong: rgba(255, 255, 255, 0.15);
-    --text: #f0ece4;
-    --text-dim: #9c9487;
-    --muted: #9c9487;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --bg: #0b0e13;
+    --bg-soft: #07090c;          /* Sidebar dunkler als Content — klare Zonen */
+    --panel: #10141b;
+    --panel-2: #161b24;
+    --border: rgba(160, 190, 255, 0.08);
+    --border-strong: rgba(160, 190, 255, 0.18);
+    --text: #e9edf4;
+    --text-dim: #8b94a6;
+    --muted: #8b94a6;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
     --glow: none;
 }
 
 [data-theme="light"] {
-    --bg: #f7f5f1;
-    --bg-soft: #efece6;
+    --bg: #f4f6f9;
+    --bg-soft: #e9edf3;
     --panel: #ffffff;
-    --panel-2: #f8f6f2;
-    --border: rgba(30, 25, 15, 0.09);
-    --border-strong: rgba(30, 25, 15, 0.18);
-    --text: #1d1a15;
-    --text-dim: #6e675d;
-    --muted: #6e675d;
-    --shadow: 0 1px 2px rgba(30, 25, 15, 0.06);
+    --panel-2: #f6f8fb;
+    --border: rgba(20, 35, 60, 0.09);
+    --border-strong: rgba(20, 35, 60, 0.2);
+    --text: #14181f;
+    --text-dim: #5d6675;
+    --muted: #5d6675;
+    --shadow: 0 1px 2px rgba(20, 35, 60, 0.06);
     --glow: none;
 }
 
@@ -1541,21 +1541,45 @@ h1, h2, h3, .brand-name, .plan-price, .stat-card-value, .plan-card-name,
     letter-spacing: -0.02em;
 }
 
-/* Buttons: flat Gold mit dunkler Schrift, kein Glow */
-.btn-primary { background: var(--accent); color: #171104; box-shadow: none; }
-.btn-primary:hover { background: color-mix(in srgb, var(--accent) 85%, #fff); box-shadow: none; }
+/* Buttons: flat Blau, kein Glow */
+.btn-primary { background: var(--accent); color: #061020; box-shadow: none; }
+.btn-primary:hover { background: color-mix(in srgb, var(--accent) 82%, #fff); box-shadow: none; }
 .btn-lg, .btn-lg:hover { box-shadow: none; }
 
+/* Nav: Akzent-Leiste links statt gefüllter Pill — Tool-Look */
+.nav-btn { position: relative; }
+.nav-btn.active {
+    background: color-mix(in srgb, var(--accent) 9%, transparent);
+    color: var(--text);
+    box-shadow: none;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+.nav-btn.active::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 7px; bottom: 7px;
+    width: 3px;
+    border-radius: 2px;
+    background: var(--accent);
+}
+.nav-btn.active .nav-icon { color: var(--accent); }
+
 /* Aktive Zustände flat statt Verlauf */
-.nav-btn.active { background: color-mix(in srgb, var(--accent) 13%, transparent); color: var(--accent); box-shadow: none; }
-.billing-toggle-btn.active { background: var(--accent); color: #171104; }
-.billing-toggle-btn.active .save-pill { background: rgba(0,0,0,0.18); color: #171104; }
-.settings-tab.active { background: var(--accent); color: #171104; box-shadow: none; }
-.topbar-plan.owner { background: var(--accent); color: #171104; }
-.plan-current-badge { background: var(--accent); color: #171104; }
+.billing-toggle-btn.active { background: var(--accent); color: #061020; }
+.billing-toggle-btn.active .save-pill { background: rgba(0,0,0,0.22); color: #dff0ff; }
+.settings-tab.active { background: var(--accent); color: #061020; box-shadow: none; }
+.topbar-plan.owner { background: var(--accent); color: #061020; }
+.plan-current-badge { background: var(--accent); color: #061020; }
 .progress-fill { background: var(--accent); }
 
-/* Landing: nüchtern statt Aurora */
+/* Stat-Cards: feine Akzent-Kante oben — Dashboard-Identität */
+.stat-card { border-top: 2px solid color-mix(in srgb, var(--accent) 55%, transparent); }
+
+/* Landing: nüchtern + feines Punktraster statt Aurora */
+.landing-body {
+    background-image: radial-gradient(circle, color-mix(in srgb, var(--accent) 9%, transparent) 1px, transparent 1px);
+    background-size: 26px 26px;
+}
 .hero h1 .grad {
     background: none;
     -webkit-background-clip: initial;
@@ -1563,9 +1587,9 @@ h1, h2, h3, .brand-name, .plan-price, .stat-card-value, .plan-card-name,
     color: var(--accent);
 }
 .hero-badge { box-shadow: 0 0 0 1px var(--border-strong); backdrop-filter: none; -webkit-backdrop-filter: none; }
-.feature-card:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
+.feature-card:hover { box-shadow: var(--shadow); transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
 .plan-card.popular { transform: none; box-shadow: var(--shadow); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
-.feature-icon { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+.feature-icon { background: color-mix(in srgb, var(--accent) 13%, transparent); color: var(--accent); border-radius: 8px; }
 
 /* Top-right user + plan bar */
 .topbar { display: flex; justify-content: flex-end; align-items: center; margin-bottom: 20px; }
@@ -1583,5 +1607,5 @@ h1, h2, h3, .brand-name, .plan-price, .stat-card-value, .plan-card-name,
 }
 .topbar-plan.pro { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--accent); }
 .topbar-plan.business { background: color-mix(in srgb, var(--accent-2) 20%, transparent); color: var(--accent-2); }
-.topbar-plan.owner { background: var(--accent); color: #171104; }
+.topbar-plan.owner { background: var(--accent); color: #061020; }
 .topbar-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }

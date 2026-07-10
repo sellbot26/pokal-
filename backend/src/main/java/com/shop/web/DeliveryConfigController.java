@@ -66,7 +66,7 @@ public class DeliveryConfigController {
         }
         if (req.brandColor() != null) {
             String c = req.brandColor().trim();
-            if (!c.isEmpty() && !c.matches("#[0-9a-fA-F]{6}")) throw new IllegalArgumentException("Color must be a hex value like #e3a63a.");
+            if (!c.isEmpty() && !c.matches("#[0-9a-fA-F]{6}")) throw new IllegalArgumentException("Color must be a hex value like #4d9fff.");
             user.setBrandColor(c.isEmpty() ? null : c);
         }
         if (req.brandFooter() != null) user.setBrandFooter(req.brandFooter().isBlank() ? null : req.brandFooter().trim());

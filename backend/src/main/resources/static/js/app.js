@@ -384,7 +384,7 @@ async function loadChart() {
 function renderChart(series) {
     if (typeof Chart === 'undefined') return;
     const css = getComputedStyle(document.documentElement);
-    const accent = css.getPropertyValue('--accent').trim() || '#e3a63a';
+    const accent = css.getPropertyValue('--accent').trim() || '#4d9fff';
     const textDim = css.getPropertyValue('--text-dim').trim() || '#8b8d9c';
     const canvas = $('#revenueChart');
     if (!canvas) return;
@@ -394,12 +394,12 @@ function renderChart(series) {
     gradient.addColorStop(0, accent + '40');
     gradient.addColorStop(1, accent + '00');
 
-    // Dezenter Gold-Verlauf für die Umsatzlinie (Markenfarbe)
+    // Dezenter Blau-Verlauf für die Umsatzlinie (Markenfarbe)
     const width = canvas.width || 800;
     const rainbow = ctx.createLinearGradient(0, 0, width, 0);
-    rainbow.addColorStop(0.00, '#b9832a');
+    rainbow.addColorStop(0.00, '#2b6fd9');
     rainbow.addColorStop(0.50, accent);
-    rainbow.addColorStop(1.00, '#f2cd7e');
+    rainbow.addColorStop(1.00, '#9ed0ff');
 
     if (revenueChart) revenueChart.destroy();
     revenueChart = new Chart(ctx, {
@@ -1603,7 +1603,7 @@ function loadEmbedIntoEditor(saved) {
     $('#eTitle').value = data.title || '';
     $('#eUrl').value = data.url || '';
     $('#eDescription').value = data.description || '';
-    $('#eColor').value = /^#[0-9a-fA-F]{6}$/.test(data.color || '') ? data.color : '#e3a63a';
+    $('#eColor').value = /^#[0-9a-fA-F]{6}$/.test(data.color || '') ? data.color : '#4d9fff';
     $('#eTimestamp').checked = !!data.timestamp;
     $('#eThumbnail').value = data.thumbnail || '';
     $('#eImage').value = data.image || '';
@@ -1627,7 +1627,7 @@ function resetEmbedEditor() {
         const el = $('#' + id);
         if (el.type === 'checkbox') el.checked = false; else el.value = '';
     });
-    $('#eColor').value = settings.brandColor && /^#[0-9a-fA-F]{6}$/.test(settings.brandColor) ? settings.brandColor : '#e3a63a';
+    $('#eColor').value = settings.brandColor && /^#[0-9a-fA-F]{6}$/.test(settings.brandColor) ? settings.brandColor : '#4d9fff';
     $('#fieldsEditor').innerHTML = '';
     $('#buttonsEditor').innerHTML = '';
     $('#embedDeleteBtn').hidden = true;
@@ -1706,7 +1706,7 @@ function selectSettingsTab(name) {
 async function loadMyBranding() {
     try {
         const b = await api('/api/my/branding');
-        $('#myBrandColor').value = /^#[0-9a-fA-F]{6}$/.test(b.brandColor || '') ? b.brandColor : '#e3a63a';
+        $('#myBrandColor').value = /^#[0-9a-fA-F]{6}$/.test(b.brandColor || '') ? b.brandColor : '#4d9fff';
         $('#myBrandFooter').value = b.brandFooter || '';
     } catch (e) { /* optional */ }
 }
@@ -1832,7 +1832,7 @@ async function loadSettingsForm() {
     try { settings = await api('/api/admin/settings'); } catch (e) { toast(e.message, true); return; }
     $('#sShopName').value = settings.shopName || '';
     $('#sDescription').value = settings.description || '';
-    $('#sBrandColor').value = /^#[0-9a-fA-F]{6}$/.test(settings.brandColor || '') ? settings.brandColor : '#e3a63a';
+    $('#sBrandColor').value = /^#[0-9a-fA-F]{6}$/.test(settings.brandColor || '') ? settings.brandColor : '#4d9fff';
     $('#sCurrency').value = settings.currency === 'USD' ? 'USD' : 'EUR';
     $('#sLogoUrl').value = settings.logoUrl || '';
     $('#sBannerUrl').value = settings.bannerUrl || '';
