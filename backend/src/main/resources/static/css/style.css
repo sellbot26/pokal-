@@ -1497,37 +1497,37 @@ input[type="color"].input { height: 44px; }
 /* ===== Pokal Design Refresh — black & ice-blue, sharp ===== */
 
 :root {
-    --accent: #4d9fff;
-    --accent-2: #7cc0ff;
-    --radius: 8px;
-    --radius-sm: 6px;
+    --accent: #8b95ff;
+    --accent-2: #b3baff;
+    --radius: 10px;
+    --radius-sm: 8px;
 }
 
 [data-theme="dark"] {
-    --bg: #0b0e13;
-    --bg-soft: #07090c;          /* Sidebar dunkler als Content — klare Zonen */
-    --panel: #10141b;
-    --panel-2: #161b24;
-    --border: rgba(160, 190, 255, 0.08);
-    --border-strong: rgba(160, 190, 255, 0.18);
-    --text: #e9edf4;
-    --text-dim: #8b94a6;
-    --muted: #8b94a6;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --bg: #060607;               /* fast pures Schwarz */
+    --bg-soft: #030304;          /* Sidebar noch dunkler — klare Zonen */
+    --panel: #0c0c0e;
+    --panel-2: #121215;
+    --border: rgba(255, 255, 255, 0.07);
+    --border-strong: rgba(255, 255, 255, 0.14);
+    --text: #f5f6f8;
+    --text-dim: #8a8f98;
+    --muted: #8a8f98;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
     --glow: none;
 }
 
 [data-theme="light"] {
-    --bg: #f4f6f9;
-    --bg-soft: #e9edf3;
+    --bg: #f5f5f7;
+    --bg-soft: #ebebef;
     --panel: #ffffff;
-    --panel-2: #f6f8fb;
-    --border: rgba(20, 35, 60, 0.09);
-    --border-strong: rgba(20, 35, 60, 0.2);
-    --text: #14181f;
-    --text-dim: #5d6675;
-    --muted: #5d6675;
-    --shadow: 0 1px 2px rgba(20, 35, 60, 0.06);
+    --panel-2: #f7f7fa;
+    --border: rgba(25, 25, 35, 0.09);
+    --border-strong: rgba(25, 25, 35, 0.2);
+    --text: #17171c;
+    --text-dim: #62636c;
+    --muted: #62636c;
+    --shadow: 0 1px 2px rgba(25, 25, 35, 0.06);
     --glow: none;
 }
 
@@ -1541,9 +1541,11 @@ h1, h2, h3, .brand-name, .plan-price, .stat-card-value, .plan-card-name,
     letter-spacing: -0.02em;
 }
 
-/* Buttons: flat Blau, kein Glow */
-.btn-primary { background: var(--accent); color: #061020; box-shadow: none; }
-.btn-primary:hover { background: color-mix(in srgb, var(--accent) 82%, #fff); box-shadow: none; }
+/* Buttons: Pills wie SellAuth — Periwinkle mit dunkler Schrift, kein Glow */
+.btn { border-radius: 100px; }
+.btn-sm { border-radius: 100px; }
+.btn-primary { background: var(--accent); color: #0d0e1a; box-shadow: none; }
+.btn-primary:hover { background: var(--accent-2); box-shadow: none; }
 .btn-lg, .btn-lg:hover { box-shadow: none; }
 
 /* Nav: Akzent-Leiste links statt gefüllter Pill — Tool-Look */
@@ -1565,11 +1567,11 @@ h1, h2, h3, .brand-name, .plan-price, .stat-card-value, .plan-card-name,
 .nav-btn.active .nav-icon { color: var(--accent); }
 
 /* Aktive Zustände flat statt Verlauf */
-.billing-toggle-btn.active { background: var(--accent); color: #061020; }
-.billing-toggle-btn.active .save-pill { background: rgba(0,0,0,0.22); color: #dff0ff; }
-.settings-tab.active { background: var(--accent); color: #061020; box-shadow: none; }
-.topbar-plan.owner { background: var(--accent); color: #061020; }
-.plan-current-badge { background: var(--accent); color: #061020; }
+.billing-toggle-btn.active { background: var(--accent); color: #0d0e1a; }
+.billing-toggle-btn.active .save-pill { background: rgba(0,0,0,0.22); color: #e6e8ff; }
+.settings-tab.active { background: var(--accent); color: #0d0e1a; box-shadow: none; }
+.topbar-plan.owner { background: var(--accent); color: #0d0e1a; }
+.plan-current-badge { background: var(--accent); color: #0d0e1a; }
 .progress-fill { background: var(--accent); }
 
 /* Stat-Cards: feine Akzent-Kante oben — Dashboard-Identität */
@@ -1607,5 +1609,5 @@ h1, h2, h3, .brand-name, .plan-price, .stat-card-value, .plan-card-name,
 }
 .topbar-plan.pro { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--accent); }
 .topbar-plan.business { background: color-mix(in srgb, var(--accent-2) 20%, transparent); color: var(--accent-2); }
-.topbar-plan.owner { background: var(--accent); color: #061020; }
+.topbar-plan.owner { background: var(--accent); color: #0d0e1a; }
 .topbar-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
