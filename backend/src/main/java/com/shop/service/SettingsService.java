@@ -111,7 +111,7 @@ public class SettingsService {
         try {
             return Color.decode(get("brandColor", props.getBrandColor()));
         } catch (Exception e) {
-            return new Color(0x5865F2);
+            return new Color(0xE3A63A);
         }
     }
 

@@ -40,7 +40,7 @@ spring:
 
 shop:
   brand-name: ${BRAND_NAME:Pokal}
-  brand-color: ${BRAND_COLOR:#5865F2}
+  brand-color: ${BRAND_COLOR:#e3a63a}
   base-url: ${BASE_URL:http://localhost:8080}
   upload-dir: ${UPLOAD_DIR:./uploads}
   order-expiry-minutes: ${ORDER_EXPIRY_MINUTES:60}

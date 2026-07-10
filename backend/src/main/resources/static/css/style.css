@@ -1494,6 +1494,79 @@ input[type="color"].input { height: 44px; }
     background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent);
 }
 
+/* ===== Pokal Design Refresh — flat, warm, trophy-gold ===== */
+
+:root {
+    --accent: #e3a63a;
+    --accent-2: #caa24f;
+    --radius: 10px;
+    --radius-sm: 8px;
+}
+
+[data-theme="dark"] {
+    --bg: #0b0a08;
+    --bg-soft: #100e0b;
+    --panel: #151210;
+    --panel-2: #1c1815;
+    --border: rgba(255, 255, 255, 0.07);
+    --border-strong: rgba(255, 255, 255, 0.15);
+    --text: #f0ece4;
+    --text-dim: #9c9487;
+    --muted: #9c9487;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --glow: none;
+}
+
+[data-theme="light"] {
+    --bg: #f7f5f1;
+    --bg-soft: #efece6;
+    --panel: #ffffff;
+    --panel-2: #f8f6f2;
+    --border: rgba(30, 25, 15, 0.09);
+    --border-strong: rgba(30, 25, 15, 0.18);
+    --text: #1d1a15;
+    --text-dim: #6e675d;
+    --muted: #6e675d;
+    --shadow: 0 1px 2px rgba(30, 25, 15, 0.06);
+    --glow: none;
+}
+
+/* Ruhige Fläche — keine Deko-Verläufe im Hintergrund */
+body::before, .landing-body::before { display: none; animation: none; }
+
+/* Markante Display-Schrift für Zahlen & Überschriften */
+h1, h2, h3, .brand-name, .plan-price, .stat-card-value, .plan-card-name,
+.hero h1, .section-heading h2, .topbar-name, .pay-amount {
+    font-family: 'Space Grotesk', var(--font);
+    letter-spacing: -0.02em;
+}
+
+/* Buttons: flat Gold mit dunkler Schrift, kein Glow */
+.btn-primary { background: var(--accent); color: #171104; box-shadow: none; }
+.btn-primary:hover { background: color-mix(in srgb, var(--accent) 85%, #fff); box-shadow: none; }
+.btn-lg, .btn-lg:hover { box-shadow: none; }
+
+/* Aktive Zustände flat statt Verlauf */
+.nav-btn.active { background: color-mix(in srgb, var(--accent) 13%, transparent); color: var(--accent); box-shadow: none; }
+.billing-toggle-btn.active { background: var(--accent); color: #171104; }
+.billing-toggle-btn.active .save-pill { background: rgba(0,0,0,0.18); color: #171104; }
+.settings-tab.active { background: var(--accent); color: #171104; box-shadow: none; }
+.topbar-plan.owner { background: var(--accent); color: #171104; }
+.plan-current-badge { background: var(--accent); color: #171104; }
+.progress-fill { background: var(--accent); }
+
+/* Landing: nüchtern statt Aurora */
+.hero h1 .grad {
+    background: none;
+    -webkit-background-clip: initial;
+    background-clip: initial;
+    color: var(--accent);
+}
+.hero-badge { box-shadow: 0 0 0 1px var(--border-strong); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.feature-card:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
+.plan-card.popular { transform: none; box-shadow: var(--shadow); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+.feature-icon { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+
 /* Top-right user + plan bar */
 .topbar { display: flex; justify-content: flex-end; align-items: center; margin-bottom: 20px; }
 .topbar-user {
@@ -1510,5 +1583,5 @@ input[type="color"].input { height: 44px; }
 }
 .topbar-plan.pro { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--accent); }
 .topbar-plan.business { background: color-mix(in srgb, var(--accent-2) 20%, transparent); color: var(--accent-2); }
-.topbar-plan.owner { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; }
+.topbar-plan.owner { background: var(--accent); color: #171104; }
 .topbar-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }

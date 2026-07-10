@@ -288,7 +288,7 @@ public class EmbedApiController {
             ShopUser actor = userRepo.findById(ownerId).orElse(null);
             if (actor != null && !planService.isAtLeast(actor, "PRO")
                     && data instanceof com.fasterxml.jackson.databind.node.ObjectNode obj) {
-                obj.put("color", settings.get("brandColor", "#5865F2"));
+                obj.put("color", settings.get("brandColor", "#e3a63a"));
                 obj.put("footer", settings.brandName());
             }
         }
