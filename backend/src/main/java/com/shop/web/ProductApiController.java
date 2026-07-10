@@ -144,6 +144,7 @@ public class ProductApiController {
             ShopUser actor = userRepo.findById(creatorId).orElseThrow();
             Set<String> myGuilds = guildAccess.managedGuildIds(creatorId);
             planService.assertCanAddProduct(actor, false, myGuilds);
+            assertCanUseDeliveryType(actor, req.deliveryType());
         }
         Product p = new Product();
         p.setGuildId(req.guildId());
@@ -165,6 +166,9 @@ public class ProductApiController {
                 && productRepo.findByGuildIdAndNameIgnoreCase(targetGuild, req.name().trim())
                         .filter(o -> !o.getId().equals(id)).isPresent()) {
             throw new IllegalArgumentException("Produktname existiert auf diesem Server bereits.");
+        }
+        if (!siteAdmin && tenantId != null) {
+            assertCanUseDeliveryType(userRepo.findById(tenantId).orElseThrow(), req.deliveryType());
         }
         if (req.guildId() != null && !req.guildId().isBlank()) p.setGuildId(req.guildId());
         apply(p, req);
@@ -227,6 +231,13 @@ public class ProductApiController {
         p.setStock(Math.max(-1, stock));
         productRepo.save(p);
         return Map.of("id", p.getId(), "stock", p.getStock());
+    }
+
+    /** Auto-Rollen-Lieferung (ROLE) ist ein Pro-Feature — Free-Verkäufer dürfen sie nicht nutzen. */
+    private void assertCanUseDeliveryType(ShopUser actor, String deliveryType) {
+        if ("ROLE".equals(deliveryType) && !planService.isAtLeast(actor, "PRO")) {
+            throw new IllegalStateException("Auto-role on purchase is a Pro feature. Upgrade your plan to assign Discord roles automatically.");
+        }
     }
 
     private void requireAccess(Product p, String tenantId, boolean siteAdmin) {

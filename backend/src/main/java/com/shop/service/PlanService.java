@@ -117,6 +117,13 @@ public class PlanService {
         return TIERS.get(id);
     }
 
+    private static final List<String> TIER_RANK = List.of("FREE", "PRO", "BUSINESS");
+
+    /** true, wenn der Nutzer (nach Ablaufprüfung) mindestens diesen Tier hat. Für Feature-Gating. */
+    public boolean isAtLeast(ShopUser user, String tierId) {
+        return TIER_RANK.indexOf(tierFor(user).id()) >= Math.max(0, TIER_RANK.indexOf(tierId));
+    }
+
     /** Rückwärtskompatibel: unbegrenzte Freischaltung (z. B. Owner/Legacy). */
     @Transactional
     public void unlockForUser(ShopUser user, String tierId) {

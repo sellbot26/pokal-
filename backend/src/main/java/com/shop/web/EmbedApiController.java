@@ -42,6 +42,7 @@ public class EmbedApiController {
     private final PlanService planService;
     private final ShopUserRepo userRepo;
     private final GuildAccessService guildAccess;
+    private final com.shop.service.SettingsService settings;
 
     // ===================== Site-Admin (sieht/verwaltet alle Embeds) =====================
 
@@ -281,6 +282,16 @@ public class EmbedApiController {
         }
 
         JsonNode data = mapper.readTree(saved.getJson());
+        // Plan-Gating: eigene Embed-Farben + entfernbarer Branding-Footer sind Pro-Features.
+        // Free-Verkäufer bekommen die Marken-Farbe erzwungen und behalten den Pokal-Footer.
+        if (!siteAdmin && ownerId != null) {
+            ShopUser actor = userRepo.findById(ownerId).orElse(null);
+            if (actor != null && !planService.isAtLeast(actor, "PRO")
+                    && data instanceof com.fasterxml.jackson.databind.node.ObjectNode obj) {
+                obj.put("color", settings.get("brandColor", "#5865F2"));
+                obj.put("footer", settings.brandName());
+            }
+        }
         MessageEmbed embed = renderer.render(data);
         MessageCreateAction action = channel.sendMessageEmbeds(embed);
         String content = renderer.content(data);

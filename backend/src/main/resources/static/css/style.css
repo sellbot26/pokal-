@@ -1487,6 +1487,13 @@ input[type="color"].input { height: 44px; }
 /* Plan chip in the sidebar foot */
 .plan-chip { padding: 12px 14px; border-radius: 12px; }
 
+/* Pro-Feature-Schloss-Badge */
+.plan-lock {
+    display: inline-block; font-size: 9.5px; font-weight: 800; letter-spacing: 0.05em;
+    padding: 1px 7px; border-radius: 100px; vertical-align: middle;
+    background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent);
+}
+
 /* Top-right user + plan bar */
 .topbar { display: flex; justify-content: flex-end; align-items: center; margin-bottom: 20px; }
 .topbar-user {

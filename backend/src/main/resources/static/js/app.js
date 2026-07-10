@@ -193,10 +193,33 @@ async function init() {
     loadPlanChip();
 }
 
+let myPlanTier = 'FREE';
+let myIsOwner = false;
+const TIER_RANK = { FREE: 0, PRO: 1, BUSINESS: 2 };
+function planAtLeast(tier) { return myIsOwner || (TIER_RANK[myPlanTier] ?? 0) >= (TIER_RANK[tier] ?? 0); }
+
+/** Sperrt Pro-Features in der UI (Server erzwingt es zusätzlich). */
+function applyPlanGates() {
+    const pro = planAtLeast('PRO');
+    const color = $('#eColor');
+    if (color) {
+        color.disabled = !pro;
+        const lbl = color.closest('label');
+        if (lbl && !lbl.querySelector('.plan-lock') && !pro) {
+            lbl.insertAdjacentHTML('beforeend', ' <span class="plan-lock">PRO</span>');
+        }
+    }
+    const roleOpt = document.querySelector('#pDeliveryType option[value="ROLE"]');
+    if (roleOpt) { roleOpt.disabled = !pro; roleOpt.textContent = pro ? 'Discord role' : 'Discord role (Pro)'; }
+}
+
 async function loadPlanChip() {
     try {
         const plan = await api('/api/my/plan');
         const t = plan.tier;
+        myPlanTier = t.id;
+        myIsOwner = !!plan.isSiteAdmin;
+        applyPlanGates();
         const badge = $('#planChipBadge');
         badge.textContent = t.name.toUpperCase();
         badge.className = 'plan-chip-badge' + (t.id === 'PRO' ? ' pro' : t.id === 'BUSINESS' ? ' business' : '');

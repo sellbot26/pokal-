@@ -7,6 +7,7 @@ import com.shop.model.Product;
 import com.shop.payment.PayGateProvider;
 import com.shop.payment.PaymentService;
 import com.shop.model.Review;
+import com.shop.model.ShopUser;
 import com.shop.repo.OrderRepo;
 import com.shop.repo.ProductRepo;
 import com.shop.repo.ReviewRepo;
@@ -63,6 +64,7 @@ public class ShopCommands extends ListenerAdapter {
     private final BotLogService botLog;
     private final ShopProperties props;
     private final SettingsService settings;
+    private final PlanService planService;
 
     /** true = Aktion blockiert, Antwort wurde bereits gesendet. */
     private boolean maintenanceBlocked(net.dv8tion.jda.api.interactions.callbacks.IReplyCallback event) {
@@ -218,6 +220,15 @@ public class ShopCommands extends ListenerAdapter {
         if (product == null) {
             event.replyEmbeds(embeds.error("Product **" + name + "** not found.")).setEphemeral(true).queue();
             return;
+        }
+        // Vouch-/Review-System ist ein Pro-Feature des Verkäufers.
+        if (product.getOwnerId() != null && !props.getDiscord().adminIdList().contains(product.getOwnerId())) {
+            ShopUser seller = userRepo.findById(product.getOwnerId()).orElse(null);
+            if (seller == null || !planService.isAtLeast(seller, "PRO")) {
+                event.replyEmbeds(embeds.error("The review system is a Pro feature — this shop hasn't unlocked it yet."))
+                        .setEphemeral(true).queue();
+                return;
+            }
         }
         boolean verifiedBuyer = orderRepo.findByUserIdOrderByCreatedAtDesc(event.getUser().getId()).stream()
                 .anyMatch(o -> product.getId().equals(o.getProductId())
