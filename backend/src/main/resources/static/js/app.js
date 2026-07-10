@@ -211,6 +211,14 @@ function applyPlanGates() {
     }
     const roleOpt = document.querySelector('#pDeliveryType option[value="ROLE"]');
     if (roleOpt) { roleOpt.disabled = !pro; roleOpt.textContent = pro ? 'Discord role' : 'Discord role (Pro)'; }
+
+    // Settings-Tabs: Payment Methods für alle, Delivery + Coupons erst ab Pro
+    ['delivery', 'coupons'].forEach(tab => {
+        const btn = document.querySelector(`#settingsTabs [data-tab="${tab}"]`);
+        if (btn && !pro && !btn.querySelector('.plan-lock')) {
+            btn.insertAdjacentHTML('beforeend', ' <span class="plan-lock">PRO</span>');
+        }
+    });
 }
 
 async function loadPlanChip() {
@@ -1642,6 +1650,12 @@ function relocateUserSettings() {
 }
 
 function selectSettingsTab(name) {
+    // Delivery + Coupons sind Pro-Features — Free-Nutzer werden zum Upgrade geleitet
+    if ((name === 'delivery' || name === 'coupons') && !planAtLeast('PRO')) {
+        toast('Delivery & Coupons are a Pro feature — upgrade to unlock.', true);
+        showSection('billing');
+        return;
+    }
     $$('#settingsTabs .settings-nav-item').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
     // Nur vorhandene Panels umschalten — für Nutzer sind die admin-only-Panels aus dem DOM entfernt
     const panels = { general: 'settingsTabGeneral', branding: 'settingsTabBranding',

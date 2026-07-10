@@ -21,6 +21,8 @@ public class DiscountApiController {
 
     private final DiscountCodeRepo discountRepo;
     private final GuildAccessService guildAccess;
+    private final com.shop.service.PlanService planService;
+    private final com.shop.repo.ShopUserRepo userRepo;
 
     // ===================== Site-Admin (alle Server) =====================
 
@@ -59,6 +61,10 @@ public class DiscountApiController {
         String id = principal.getAttribute("id");
         if (req.guildId() == null || req.guildId().isBlank()) throw new IllegalArgumentException("Please select a server.");
         if (!guildAccess.manages(id, req.guildId())) throw new SecurityException("You don't manage this server.");
+        var actor = userRepo.findById(id).orElseThrow();
+        if (!planService.isAtLeast(actor, "PRO")) {
+            throw new IllegalStateException("Coupons are a Pro feature. Upgrade your plan to create discount codes.");
+        }
         return createDiscount(req, id);
     }
 

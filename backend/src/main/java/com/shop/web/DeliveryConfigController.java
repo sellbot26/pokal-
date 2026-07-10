@@ -20,6 +20,8 @@ public class DeliveryConfigController {
     public record DeliveryRequest(String title, String message) {}
 
     private final ShopUserRepo userRepo;
+    private final com.shop.service.PlanService planService;
+    private final com.shop.service.GuildAccessService guildAccess;
 
     @GetMapping("/api/my/delivery-config")
     public Map<String, String> get(@AuthenticationPrincipal OAuth2User principal) {
@@ -32,7 +34,11 @@ public class DeliveryConfigController {
 
     @PutMapping("/api/my/delivery-config")
     public Map<String, String> update(@RequestBody DeliveryRequest req, @AuthenticationPrincipal OAuth2User principal) {
-        ShopUser user = userRepo.findById(principal.<String>getAttribute("id")).orElseThrow();
+        String uid = principal.getAttribute("id");
+        ShopUser user = userRepo.findById(uid).orElseThrow();
+        if (!guildAccess.isSiteAdmin(uid) && !planService.isAtLeast(user, "PRO")) {
+            throw new IllegalStateException("A custom delivery message is a Pro feature. Upgrade your plan to edit it.");
+        }
         if (req.title() != null) user.setDeliveryTitle(req.title().isBlank() ? null : req.title().trim());
         if (req.message() != null) user.setDeliveryMessage(req.message().isBlank() ? null : req.message());
         userRepo.save(user);
