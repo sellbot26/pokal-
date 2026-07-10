@@ -64,11 +64,13 @@ public class PaymentService {
     private final ShopProperties props;
     private final SettingsService settings;
     private final ObjectMapper mapper;
+    private final com.shop.service.PlanService planService;
 
     public PaymentService(List<PaymentProvider> providerList, PaymentRepo paymentRepo, OrderRepo orderRepo,
                           ProductRepo productRepo, ShopUserRepo userRepo,
                           DeliveryService deliveryService, BotLogService botLog, WebhookLogService webhookLog,
-                          ShopProperties props, SettingsService settings, ObjectMapper mapper) {
+                          ShopProperties props, SettingsService settings, ObjectMapper mapper,
+                          com.shop.service.PlanService planService) {
         this.providers = providerList.stream()
                 .collect(Collectors.toMap(PaymentProvider::name, Function.identity()));
         this.paymentRepo = paymentRepo;
@@ -81,6 +83,7 @@ public class PaymentService {
         this.props = props;
         this.settings = settings;
         this.mapper = mapper;
+        this.planService = planService;
     }
 
     /** Verkäufer des bestellten Produkts — bestimmt, auf wessen Wallet/Konto die Zahlung läuft. */
@@ -276,11 +279,22 @@ public class PaymentService {
         String intro = seller != null && seller.getDeliveryMessage() != null && !seller.getDeliveryMessage().isBlank()
                 ? seller.getDeliveryMessage() + "\n\n"
                 : "";
+        // Eigenes Branding (Business): Farbe + Footer des Verkäufers, sonst Site-Standard
+        Color dmColor = brandColor();
+        String dmFooter = settings.brandName();
+        if (seller != null && planService.isAtLeast(seller, "BUSINESS")) {
+            if (seller.getBrandColor() != null && !seller.getBrandColor().isBlank()) {
+                try { dmColor = Color.decode(seller.getBrandColor()); } catch (Exception ignored) {}
+            }
+            if (seller.getBrandFooter() != null && !seller.getBrandFooter().isBlank()) {
+                dmFooter = seller.getBrandFooter();
+            }
+        }
         deliveryService.sendDm(order.getUserId(), new EmbedBuilder()
                 .setTitle(title)
                 .setDescription(intro + "**" + order.getProductName() + "** x" + order.getQuantity() + "\n\n" + deliveryMessage)
-                .setColor(brandColor())
-                .setFooter(settings.brandName())
+                .setColor(dmColor)
+                .setFooter(dmFooter)
                 .setTimestamp(Instant.now())
                 .build());
 

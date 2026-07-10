@@ -55,6 +55,10 @@ public class ShopUser {
     @jakarta.persistence.Column(columnDefinition = "text")
     private String deliveryMessage;
 
+    /** Eigenes Branding (Business): Akzentfarbe (#RRGGBB) + Footer für die eigenen Liefer-DMs. */
+    private String brandColor;
+    private String brandFooter;
+
     public ShopUser(String id, String username, String avatar) {
         this.id = id;
         this.username = username;

@@ -212,14 +212,16 @@ function applyPlanGates() {
     const roleOpt = document.querySelector('#pDeliveryType option[value="ROLE"]');
     if (roleOpt) { roleOpt.disabled = !pro; roleOpt.textContent = pro ? 'Discord role' : 'Discord role (Pro)'; }
 
-    // Settings-Tabs: Payment Methods für alle, Delivery + Coupons erst ab Pro
-    ['delivery', 'coupons'].forEach(tab => {
+    // Settings-Tabs nach Plan: Payment Methods (Free), Delivery+Coupons (Pro), Branding (Business)
+    Object.entries(SETTINGS_TAB_TIER).forEach(([tab, tier]) => {
         const btn = document.querySelector(`#settingsTabs [data-tab="${tab}"]`);
-        if (btn && !pro && !btn.querySelector('.plan-lock')) {
-            btn.insertAdjacentHTML('beforeend', ' <span class="plan-lock">PRO</span>');
+        if (btn && !planAtLeast(tier) && !btn.querySelector('.plan-lock')) {
+            btn.insertAdjacentHTML('beforeend', ` <span class="plan-lock">${tier === 'BUSINESS' ? 'BIZ' : 'PRO'}</span>`);
         }
     });
 }
+
+const SETTINGS_TAB_TIER = { delivery: 'PRO', coupons: 'PRO', mybranding: 'BUSINESS' };
 
 async function loadPlanChip() {
     try {
@@ -1684,9 +1686,10 @@ function relocateUserSettings() {
 }
 
 function selectSettingsTab(name) {
-    // Delivery + Coupons sind Pro-Features — Free-Nutzer werden zum Upgrade geleitet
-    if ((name === 'delivery' || name === 'coupons') && !planAtLeast('PRO')) {
-        toast('Delivery & Coupons are a Pro feature — upgrade to unlock.', true);
+    // Plan-gesperrte Tabs → Free/Pro-Nutzer werden zum Upgrade geleitet
+    const need = SETTINGS_TAB_TIER[name];
+    if (need && !planAtLeast(need)) {
+        toast(`This is a ${need === 'BUSINESS' ? 'Business' : 'Pro'} feature — upgrade to unlock.`, true);
         showSection('billing');
         return;
     }
@@ -1694,11 +1697,21 @@ function selectSettingsTab(name) {
     // Nur vorhandene Panels umschalten — für Nutzer sind die admin-only-Panels aus dem DOM entfernt
     const panels = { general: 'settingsTabGeneral', branding: 'settingsTabBranding',
         payments: 'settingsTabPayments', logs: 'settingsTabLogs',
-        paymentmethods: 'settingsTabPaymentMethods', delivery: 'settingsTabDelivery', coupons: 'settingsTabCoupons' };
+        paymentmethods: 'settingsTabPaymentMethods', delivery: 'settingsTabDelivery',
+        coupons: 'settingsTabCoupons', mybranding: 'settingsTabMyBranding' };
     Object.entries(panels).forEach(([tab, id]) => { const el = $('#' + id); if (el) el.hidden = tab !== name; });
     if (name === 'coupons') loadDiscounts();
     if (name === 'paymentmethods') loadPayments();
     if (name === 'delivery') loadDelivery();
+    if (name === 'mybranding') loadMyBranding();
+}
+
+async function loadMyBranding() {
+    try {
+        const b = await api('/api/my/branding');
+        $('#myBrandColor').value = /^#[0-9a-fA-F]{6}$/.test(b.brandColor || '') ? b.brandColor : '#6366f1';
+        $('#myBrandFooter').value = b.brandFooter || '';
+    } catch (e) { /* optional */ }
 }
 
 function initSettings() {
@@ -1738,6 +1751,17 @@ function initSettings() {
                 }
             });
             applyBranding();
+            toast('Branding saved');
+        } catch (e) { toast(e.message, true); }
+    });
+
+    $('#myBrandingForm')?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        try {
+            await api('/api/my/branding', {
+                method: 'PUT',
+                body: { brandColor: $('#myBrandColor').value, brandFooter: $('#myBrandFooter').value.trim() }
+            });
             toast('Branding saved');
         } catch (e) { toast(e.message, true); }
     });

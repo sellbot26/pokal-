@@ -385,6 +385,7 @@
                     <button class="settings-nav-item" data-tab="paymentmethods"><span data-icon="credit-card"></span> Payment Methods</button>
                     <button class="settings-nav-item" data-tab="delivery"><span data-icon="mail"></span> Delivery</button>
                     <button class="settings-nav-item" data-tab="coupons"><span data-icon="tag"></span> Coupons</button>
+                    <button class="settings-nav-item" data-tab="mybranding"><span data-icon="edit-2"></span> Branding</button>
                 </nav>
                 <div class="settings-content">
                     <div id="settingsTabGeneral" class="admin-only">
@@ -541,6 +542,20 @@
                     <!-- Eigene Zahlungsmethoden + Delivery werden zur Laufzeit hierher verschoben (für alle Nutzer) -->
                     <div id="settingsTabPaymentMethods" hidden></div>
                     <div id="settingsTabDelivery" hidden></div>
+
+                    <div id="settingsTabMyBranding" hidden>
+                        <div class="panel">
+                            <h3>Your Shop Branding <span class="plan-lock">BUSINESS</span></h3>
+                            <p class="muted" style="margin-bottom:14px">Brand your own delivery messages — accent color and footer used in the DM your customers get after buying.</p>
+                            <form id="myBrandingForm">
+                                <div class="row">
+                                    <label>Accent color <input class="input" id="myBrandColor" type="color" value="#6366f1"></label>
+                                    <label class="grow">Footer text <input class="input" id="myBrandFooter" maxlength="120" placeholder="e.g. Your Shop Name"></label>
+                                </div>
+                                <button class="btn btn-primary" type="submit" style="margin-top:8px">Save branding</button>
+                            </form>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
