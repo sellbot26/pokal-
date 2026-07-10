@@ -788,7 +788,11 @@ async function loadOrders() {
                 ? `${o.payCurrency === 'KARTE' ? 'Card' : esc(o.payCurrency)}<br><small class="muted">${o.payCurrency === 'KARTE' ? 'PayGate' : (o.payAmount ?? '')}</small>` : '—';
             const actions = [];
             if (o.status === 'PENDING') {
-                actions.push(`<button class="btn btn-sm btn-icon" title="Simulate payment (mock only)" onclick="simulatePayment(${o.id})">${icon('check-circle')}</button>`);
+                if (o.paymentProvider === 'direct') {
+                    actions.push(`<button class="btn btn-sm" title="Payment received on my wallet — deliver now" onclick="confirmPayment(${o.id})">${icon('check-circle')} Paid</button>`);
+                } else if (o.paymentProvider === 'mock') {
+                    actions.push(`<button class="btn btn-sm btn-icon" title="Simulate payment (mock only)" onclick="simulatePayment(${o.id})">${icon('check-circle')}</button>`);
+                }
                 actions.push(`<button class="btn btn-sm btn-icon btn-danger" title="Cancel" onclick="setOrderStatus(${o.id}, 'CANCELLED')">${icon('x')}</button>`);
             }
             if (o.status === 'PAID') {
@@ -813,6 +817,15 @@ window.setOrderStatus = async (id, status) => {
     try {
         await api(`${ordersPath()}/${id}/status`, { method: 'PUT', body: { status } });
         toast('Status updated');
+        loadOrders();
+    } catch (e) { toast(e.message, true); }
+};
+
+window.confirmPayment = async (id) => {
+    if (!confirm('Confirm you received the crypto for order #' + id + ' on your wallet? Delivery starts immediately.')) return;
+    try {
+        await api(`${ordersPath()}/${id}/confirm-payment`, { method: 'POST' });
+        toast('Payment confirmed — delivery triggered');
         loadOrders();
     } catch (e) { toast(e.message, true); }
 };
@@ -885,7 +898,8 @@ function applyMyPaymentConfig(config) {
     $('#myCryptoWallets').value = config.cryptoWallets || '';
     $('#myLogWebhook').value = config.logWebhookUrl || '';
     setPaymentStatus('pmPaygateDot', 'pmPaygateBadge', !!config.paygateConnected);
-    setPaymentStatus('pmCryptoDot', 'pmCryptoBadge', !!config.cryptoConnected);
+    // Direct-Krypto: aktiv, sobald Wallets eingetragen sind — NOWPayments ist optional
+    setPaymentStatus('pmCryptoDot', 'pmCryptoBadge', !!config.cryptoConnected || !!(config.cryptoWallets || '').trim());
     setPaymentStatus('pmWebhookDot', 'pmWebhookBadge', !!config.logWebhookUrl);
 }
 

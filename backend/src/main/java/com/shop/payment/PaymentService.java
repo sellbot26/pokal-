@@ -112,15 +112,14 @@ public class PaymentService {
         }
 
         // Provider-Wahl:
-        //  - Stripe / Karte brauchen eine echte Checkout-URL → IMMER der echte Provider
-        //    (der Bot baut daraus einen Discord-Link-Button; ein Mock-Pseudotext wäre eine
-        //     ungültige URL und würde die Kauf-Interaktion abbrechen).
-        //  - Krypto liefert eine Adresse (+QR) und darf im Test-/Mock-Modus über den Mock laufen.
+        //  - Stripe / Karte brauchen eine echte Checkout-URL → IMMER der echte Provider.
+        //  - Krypto: eigener NOWPayments-Account des Verkäufers > Site-NOWPayments >
+        //    DIRECT (Adresse + Kurs, manuelle Bestätigung — funktioniert ohne jeden API-Key).
+        //    Mock nur, wenn explizit PAYMENT_PROVIDER=mock gesetzt ist (lokales Testen).
         PaymentProvider chosen;
         if (stripe) chosen = requireProvider("stripe");
         else if (card) chosen = requireProvider("paygate");
-        else if ("mock".equals(props.getPayment().getProvider())) chosen = requireProvider("mock");
-        else chosen = provider();
+        else chosen = cryptoProvider(merchantFor(order));
         CreatedPayment created = chosen.create(order, apiCode, merchantFor(order));
         Payment payment = new Payment();
         payment.setOrderId(order.getId());
@@ -136,6 +135,38 @@ public class PaymentService {
         PaymentProvider p = providers.get(name);
         if (p == null) throw new IllegalStateException("Payment provider not available: " + name);
         return p;
+    }
+
+    /** Krypto-Routing: Verkäufer-NOWPayments > Site-NOWPayments > mock (nur explizit) > direct. */
+    private PaymentProvider cryptoProvider(ShopUser merchant) {
+        if (merchant != null && merchant.getNowpaymentsApiKey() != null && !merchant.getNowpaymentsApiKey().isBlank()) {
+            return requireProvider("nowpayments");
+        }
+        String configured = props.getPayment().getProvider();
+        if ("nowpayments".equals(configured)) {
+            String siteKey = props.getPayment().getNowpayments().getApiKey();
+            if (siteKey != null && !siteKey.isBlank()) return requireProvider("nowpayments");
+        }
+        if ("mock".equals(configured)) return requireProvider("mock");
+        return requireProvider("direct");
+    }
+
+    /**
+     * Manuelle Zahlungsbestätigung durch den Verkäufer — nur für DIRECT-Zahlungen
+     * (Käufer hat direkt an die Wallet überwiesen, kein automatischer Webhook).
+     * Löst die normale Lieferung aus.
+     */
+    @Transactional
+    public void confirmDirectPayment(long orderId) {
+        Payment payment = paymentRepo.findByOrderId(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("No payment for order #" + orderId));
+        if (!"direct".equals(payment.getProvider())) {
+            throw new IllegalStateException("Only direct wallet payments can be confirmed manually.");
+        }
+        if (payment.getStatus() != Payment.Status.WAITING) {
+            throw new IllegalStateException("This payment is already " + payment.getStatus() + ".");
+        }
+        markFinished(payment, null);
     }
 
     /**

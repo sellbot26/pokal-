@@ -54,7 +54,8 @@ shop:
     ticket-category-id: ${TICKET_CATEGORY_ID:}
     support-role-id: ${SUPPORT_ROLE_ID:}
   payment:
-    provider: ${PAYMENT_PROVIDER:mock}
+    # direct = Krypto direkt an die Verkäufer-Wallet (kein API-Key nötig, manuelle Bestätigung)
+    provider: ${PAYMENT_PROVIDER:direct}
     nowpayments:
       api-key: ${NOWPAYMENTS_API_KEY:}
       ipn-secret: ${NOWPAYMENTS_IPN_SECRET:}

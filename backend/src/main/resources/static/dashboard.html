@@ -200,19 +200,20 @@
                             <span class="status-dot" id="pmCryptoDot"></span>
                             <div class="pm-title">
                                 <b>Crypto</b>
-                                <span class="muted">BTC · ETH · LTC · SOL · USDT via your own NOWPayments account</span>
+                                <span class="muted">BTC · ETH · LTC · SOL · USDT — direct to your wallets, no provider needed</span>
                             </div>
                             <span class="provider-badge" id="pmCryptoBadge">Setup required</span>
                         </div>
                         <div class="pm-body">
-                            <div class="row">
-                                <label class="grow">NOWPayments API key <input class="input" id="myNpKey" type="password" placeholder="Leave empty to keep current"></label>
+                            <label>Your wallet addresses (one per line) — buyers pay straight to these
+                                <textarea class="input" id="myCryptoWallets" rows="3" placeholder="BTC: bc1…&#10;ETH: 0x…&#10;LTC: ltc1…&#10;SOL: …&#10;USDT: T…"></textarea>
+                            </label>
+                            <small class="muted">Works instantly, no account needed: the buyer gets your address + live-converted amount + QR code. You confirm the payment in Orders with one click (“Paid”) and delivery runs automatically.</small>
+                            <div class="row" style="margin-top:12px">
+                                <label class="grow">NOWPayments API key (optional — auto-confirmation) <input class="input" id="myNpKey" type="password" placeholder="Leave empty to keep current"></label>
                                 <label class="grow">IPN secret <input class="input" id="myNpSecret" type="password" placeholder="Leave empty to keep current"></label>
                             </div>
-                            <label>Your crypto wallets (one per line, shown for reference)
-                                <textarea class="input" id="myCryptoWallets" rows="3" placeholder="BTC: bc1…&#10;ETH: 0x…&#10;LTC: ltc1…"></textarea>
-                            </label>
-                            <small class="muted">Create a free account at nowpayments.io, add your wallets there, then paste the API key + IPN secret here.</small>
+                            <small class="muted">Optional: with a free nowpayments.io account payments confirm automatically — no manual click needed.</small>
                         </div>
                     </div>
                     <div class="pm-row">

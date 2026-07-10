@@ -139,6 +139,20 @@ public class OrderApiController {
         return Map.of("status", "ok");
     }
 
+    /** Direct-Krypto: Verkäufer bestätigt den Zahlungseingang auf seiner Wallet → Lieferung läuft. */
+    @PostMapping("/api/my/shop-orders/{id}/confirm-payment")
+    public Map<String, String> myConfirm(@PathVariable long id, @AuthenticationPrincipal OAuth2User principal) {
+        requireOwnOrder(id, principal.getAttribute("id"));
+        paymentService.confirmDirectPayment(id);
+        return Map.of("status", "confirmed");
+    }
+
+    @PostMapping("/api/admin/orders/{id}/confirm-payment")
+    public Map<String, String> adminConfirm(@PathVariable long id) {
+        paymentService.confirmDirectPayment(id);
+        return Map.of("status", "confirmed");
+    }
+
     private void requireOwnOrder(long orderId, String tenantId) {
         Order order = orderRepo.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("Order not found."));
@@ -198,6 +212,7 @@ public class OrderApiController {
             m.put("payAddress", p.getPayAddress());
             m.put("txHash", p.getTxHash());
             m.put("paymentStatus", p.getStatus());
+            m.put("paymentProvider", p.getProvider());
         });
         return m;
     }

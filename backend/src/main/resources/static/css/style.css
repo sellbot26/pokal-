@@ -1580,6 +1580,77 @@ h1, h2, h3, .brand-name, .plan-price, .stat-card-value, .plan-card-name,
 /* Neues P-Logo: transparentes PNG, kein schwarzer Kasten dahinter */
 .brand-icon-img { background: transparent; border-radius: 0; }
 
+/* ===== Landing: Dashboard-Preview (SellAuth-Style) ===== */
+
+.hero { position: relative; }
+/* Spotlight von oben auf die Hero */
+.hero::before {
+    content: "";
+    position: absolute;
+    left: 50%; top: -180px;
+    width: 900px; height: 480px;
+    transform: translateX(-50%);
+    background: radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.10), rgba(139,149,255,0.06) 45%, transparent 70%);
+    pointer-events: none;
+    z-index: -1;
+}
+
+.hero-preview-wrap {
+    max-width: 1000px;
+    margin: 44px auto 10px;
+    padding: 0 24px;
+    perspective: 1400px;
+    position: relative;
+    z-index: 1;
+}
+.hero-preview {
+    display: grid;
+    grid-template-columns: 190px 1fr;
+    background: #0a0a0c;
+    border: 1px solid var(--border-strong);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 40px 90px rgba(0,0,0,0.6), 0 0 0 1px rgba(139,149,255,0.06);
+    transform: rotateX(6deg);
+    transform-origin: top center;
+    pointer-events: none;
+    user-select: none;
+    font-size: 11.5px;
+}
+.hp-side { background: #060608; border-right: 1px solid var(--border); padding: 14px 12px; display: flex; flex-direction: column; gap: 12px; }
+.hp-brand { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.hp-brand img { width: 22px; height: 22px; }
+.hp-nav { display: flex; flex-direction: column; gap: 2px; }
+.hp-nav span { padding: 6px 9px; border-radius: 6px; color: var(--text-dim); }
+.hp-nav span.active { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--text); box-shadow: inset 2px 0 0 var(--accent); }
+.hp-plan { margin-top: auto; font-size: 10px; color: var(--text-dim); border: 1px solid var(--border); border-radius: 100px; padding: 5px 9px; text-align: center; }
+.hp-main { padding: 14px 18px 16px; display: flex; flex-direction: column; gap: 12px; }
+.hp-head { display: flex; justify-content: space-between; align-items: center; }
+.hp-head b { font-family: 'Space Grotesk', var(--font); font-size: 15px; display: block; }
+.hp-head small { color: var(--text-dim); }
+.hp-user { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--border); border-radius: 100px; padding: 4px 10px; color: var(--text-dim); font-size: 10.5px; }
+.hp-user i { width: 16px; height: 16px; border-radius: 50%; background: var(--accent); display: inline-block; }
+.hp-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.hp-stat { background: #0e0e11; border: 1px solid var(--border); border-top: 2px solid color-mix(in srgb, var(--accent) 55%, transparent); border-radius: 10px; padding: 10px 12px; }
+.hp-stat small { color: var(--text-dim); display: block; }
+.hp-stat b { font-family: 'Space Grotesk', var(--font); font-size: 17px; }
+.hp-stat b.acc { color: var(--accent); }
+.hp-stat em { font-style: normal; color: var(--green); font-size: 10px; display: block; margin-top: 2px; }
+.hp-chart { background: #0e0e11; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px 4px; }
+.hp-chart small { color: var(--text-dim); }
+.hp-chart svg { width: 100%; height: 110px; display: block; margin-top: 6px; }
+.hp-rows { display: flex; flex-direction: column; gap: 6px; }
+.hp-rows > div { display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: center; background: #0e0e11; border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px; color: var(--text-dim); }
+.hp-rows b { color: var(--text); font-family: 'Space Grotesk', var(--font); }
+.hp-badge { font-size: 9.5px; font-weight: 700; padding: 2px 8px; border-radius: 100px; }
+.hp-badge.ok { background: color-mix(in srgb, var(--green) 18%, transparent); color: var(--green); }
+.hp-badge.wait { background: color-mix(in srgb, var(--yellow) 18%, transparent); color: var(--yellow); }
+
+@media (max-width: 720px) {
+    .hero-preview { grid-template-columns: 1fr; transform: none; }
+    .hp-side { display: none; }
+}
+
 /* Landing: nüchtern + feines Punktraster statt Aurora */
 .landing-body {
     background-image: radial-gradient(circle, color-mix(in srgb, var(--accent) 9%, transparent) 1px, transparent 1px);
