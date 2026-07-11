@@ -1,6 +1,6 @@
 # 🛒 Discord Shop-Bot + Web-Dashboard (Crypto + PayGate)
 
-Digitaler Shop als Discord-Bot (Java / JDA) mit Premium-Web-Dashboard (Dark Mode), gemeinsamer PostgreSQL-Datenbank, Krypto-Zahlungen über NOWPayments (BTC, ETH, LTC, USDT-TRC20, SOL) und **Kartenzahlung über PayGate** (paygate.to → Auszahlung als USDC auf deine Wallet).
+Digitaler Shop als Discord-Bot (Java / JDA) mit Premium-Web-Dashboard (Dark Mode), gemeinsamer PostgreSQL-Datenbank, direkten Krypto-Zahlungen auf die eigene Wallet (BTC, LTC, ETH, SOL, USDT, USDC, DOGE, XRP, BCH, TRX — ohne Anbieter/API-Key, BTC & LTC mit Auto-Erkennung) und **Kartenzahlung über PayGate** (paygate.to → Auszahlung als USDC auf deine Wallet).
 
 ## Dashboard-Bereiche
 
@@ -60,16 +60,14 @@ Fertig: Bot ist online, Dashboard läuft auf `http://localhost:8080`.
 
 ## Zahlungsanbieter
 
-### Mock-Modus (Standard, zum Testen)
-`PAYMENT_PROVIDER=mock` — es wird eine Fake-Adresse generiert. Zahlung bestätigen:
-- im Dashboard: Bestellungen → 💰-Button, **oder**
-- per Webhook: `POST /api/webhook/payment` mit Header `x-nowpayments-sig: mock` und Body `{"payment_id":"MOCK-…","payment_status":"finished"}`
+### Mock-Modus (zum Testen)
+`PAYMENT_PROVIDER=mock` — es wird eine Fake-Adresse generiert. Zahlung bestätigen im Dashboard: Bestellungen → ✓-Button.
 
-### NOWPayments (echt)
-1. Account auf https://nowpayments.io → API-Key erstellen → `NOWPAYMENTS_API_KEY`
-2. Einstellungen → IPN-Secret erstellen → `NOWPAYMENTS_IPN_SECRET`
-3. `PAYMENT_PROVIDER=nowpayments` setzen
-4. `BASE_URL` muss **öffentlich erreichbar** sein (Webhooks!), z. B. `https://shop.deine-domain.de`
+### Direkte Krypto-Zahlung (Standard, echt)
+`PAYMENT_PROVIDER=direct` — kein Anbieter, kein API-Key. Wallet-Adressen pro Coin im Dashboard unter
+**Settings → Payments** eintragen. Der Käufer bekommt Adresse + Betrag + QR-Code; jeder Käufer erhält
+einen eindeutigen Betrag (+0,02-Schritte). **BTC & LTC werden automatisch auf der Blockchain erkannt**
+und bestätigt, andere Coins bestätigt der Verkäufer mit einem Klick in den Bestellungen.
 
 ### PayGate — Kartenzahlung (paygate.to)
 1. USDC-Wallet (Polygon) im Dashboard unter **Einstellungen → PayGate** eintragen (oder `PAYGATE_WALLET` in der `.env`)
@@ -107,7 +105,7 @@ mvn spring-boot:run
         ├── java/com/shop/
         │   ├── bot/         # JDA-Bot: Commands, Embeds, Ticket-System
         │   ├── auth/        # Discord OAuth2 Login
-        │   ├── payment/     # PaymentProvider-Abstraktion, NOWPayments, Mock
+        │   ├── payment/     # PaymentProvider-Abstraktion, Direct-Crypto, PayGate, Stripe, Mock
         │   ├── service/     # Bestellungen, Lieferung, Statistiken, Kurse, QR
         │   ├── web/         # REST-API fürs Dashboard, Webhook, CSV-Export
         │   ├── model/       # Entities (Products, Orders, Payments, …)

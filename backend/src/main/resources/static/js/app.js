@@ -10,8 +10,30 @@ const EXPLORERS = {
     'ETH': 'https://etherscan.io/tx/',
     'LTC': 'https://blockchair.com/litecoin/transaction/',
     'USDT-TRC20': 'https://tronscan.org/#/transaction/',
-    'SOL': 'https://solscan.io/tx/'
+    'SOL': 'https://solscan.io/tx/',
+    'USDC': 'https://etherscan.io/tx/',
+    'DOGE': 'https://blockchair.com/dogecoin/transaction/',
+    'XRP': 'https://xrpscan.com/tx/',
+    'BCH': 'https://blockchair.com/bitcoin-cash/transaction/',
+    'TRX': 'https://tronscan.org/#/transaction/'
 };
+
+/** Unterstützte Coins: Symbol, Name, Adress-Platzhalter (Reihenfolge = Anzeige). */
+const COINS = [
+    ['BTC', 'Bitcoin', 'bc1…'],
+    ['LTC', 'Litecoin', 'ltc1…'],
+    ['ETH', 'Ethereum', '0x…'],
+    ['SOL', 'Solana', '…'],
+    ['USDT', 'Tether (TRC20)', 'T…'],
+    ['USDC', 'USD Coin', '0x…'],
+    ['DOGE', 'Dogecoin', 'D…'],
+    ['XRP', 'XRP', 'r…'],
+    ['BCH', 'Bitcoin Cash', 'q… / bitcoincash:…'],
+    ['TRX', 'Tron', 'T…']
+];
+
+/** Symbol → Zahlungslabel der API (nur USDT weicht ab). */
+const COIN_LABEL = (symbol) => symbol === 'USDT' ? 'USDT-TRC20' : symbol;
 
 const DATE = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' });
 
@@ -153,6 +175,13 @@ async function init() {
         return; // redirect already in progress
     }
     try { settings = await api(me.admin ? '/api/admin/settings' : '/api/settings'); } catch (e) { settings = {}; }
+
+    // Wartungsmodus: Panel komplett sperren — nur der Owner kommt noch rein
+    if (settings.maintenance === 'true' && !me.admin) {
+        renderMaintenanceScreen();
+        return;
+    }
+
     applyBranding();
     populateIcons();
 
@@ -191,6 +220,19 @@ async function init() {
     relocateUserSettings(); // eigene Payment-Methods + Delivery in Settings-Tabs holen
     initSettings(); // Tab-Logik für alle
     loadPlanChip();
+}
+
+/** Vollbild-Sperre im Wartungsmodus — orange MAINTENANCE-Anzeige statt Dashboard. */
+function renderMaintenanceScreen() {
+    const name = settings.shopName || 'Pokal';
+    document.title = 'Maintenance — ' + name;
+    document.body.innerHTML = `
+        <div class="maintenance-screen">
+            <img src="${settings.logoUrl || '/img/logo.png'}" alt="" class="maintenance-logo">
+            <div class="maintenance-title">MAINTENANCE</div>
+            <p class="maintenance-text">${name} is being worked on right now.<br>Please check back in a little while.</p>
+            <button class="btn btn-ghost" onclick="location.reload()">Try again</button>
+        </div>`;
 }
 
 let myPlanTier = 'FREE';
@@ -264,7 +306,7 @@ function showSection(name) {
     const loaders = {
         overview: loadOverview, products: loadProducts, orders: loadOrders,
         customers: loadCustomers, myorders: loadMyOrders,
-        payments: loadPayments, stock: loadStock, embeds: loadEmbedSection,
+        stock: loadStock, embeds: loadEmbedSection,
         settings: loadSettingsForm, server: loadServerSection, billing: loadBillingSection,
         delivery: loadDelivery
     };
@@ -464,53 +506,6 @@ function updateGoal(revenueMonth) {
     const percent = goal > 0 ? Math.min(100, (revenue / goal) * 100) : 0;
     $('#goalFill').style.width = percent.toFixed(1) + '%';
     $('#goalText').textContent = `${money(revenue)} of ${money(goal)} (${percent.toFixed(0)}%)`;
-}
-
-// ===== Crypto & Wallets =====
-
-function initCrypto() {
-    $('#convertAmount').addEventListener('input', renderConverter);
-    // Auszahlungs-Wallets werden ausschließlich unter „Payments" (pro Verkäufer) verwaltet.
-}
-
-async function loadCrypto() {
-    try {
-        rates = await api('/api/rates');
-        const entries = Object.entries(rates);
-        $('#cryptoCards').innerHTML = entries.map(([coin, data]) => {
-            const change = data.eur_24h_change;
-            const changeHtml = change != null
-                ? `<div class="change" style="color:var(--${change >= 0 ? 'green' : 'red'})">${change >= 0 ? '▲' : '▼'} ${Math.abs(change).toFixed(2)}% (24h)</div>`
-                : '';
-            return `<div class="crypto-card">
-                <div class="coin">${esc(coin)}</div>
-                <div class="price">${money(settings.currency === 'USD' ? data.usd : data.eur)}</div>
-                ${changeHtml}
-            </div>`;
-        }).join('') || '<p class="muted">Rates unavailable</p>';
-        renderConverter();
-    } catch (e) { toast(e.message, true); }
-}
-
-function renderConverter() {
-    const amount = Number($('#convertAmount').value || 0);
-    const useUsd = settings.currency === 'USD';
-    const rows = [];
-    for (const [coin, data] of Object.entries(rates)) {
-        const price = useUsd ? data.usd : data.eur;
-        if (!price) continue;
-        const converted = amount / price;
-        const decimals = converted >= 1 ? 4 : 8;
-        rows.push(`<div class="converter-row"><span>${esc(coin)}</span><b>${converted.toFixed(decimals)}</b></div>`);
-    }
-    // Stablecoin USDC ≈ USDT rate (pegged to the dollar)
-    const usdt = rates['USDT'];
-    if (usdt) {
-        const price = useUsd ? usdt.usd : usdt.eur;
-        if (price) rows.push(`<div class="converter-row"><span>USDC</span><b>${(amount / price).toFixed(2)}</b></div>`);
-    }
-    $('#convertResult').innerHTML = rows.join('')
-        || '<p class="muted">Rates unavailable — try again later.</p>';
 }
 
 // ===== Products =====
@@ -788,10 +783,10 @@ async function loadOrders() {
                 ? `${o.payCurrency === 'KARTE' ? 'Card' : esc(o.payCurrency)}<br><small class="muted">${o.payCurrency === 'KARTE' ? 'PayGate' : (o.payAmount ?? '')}</small>` : '—';
             const actions = [];
             if (o.status === 'PENDING') {
-                if (o.paymentProvider === 'direct') {
-                    actions.push(`<button class="btn btn-sm" title="Payment received on my wallet — deliver now" onclick="confirmPayment(${o.id})">${icon('check-circle')} Paid</button>`);
-                } else if (o.paymentProvider === 'mock') {
+                if (o.paymentProvider === 'mock') {
                     actions.push(`<button class="btn btn-sm btn-icon" title="Simulate payment (mock only)" onclick="simulatePayment(${o.id})">${icon('check-circle')}</button>`);
+                } else {
+                    actions.push(`<button class="btn btn-sm" title="Payment received — deliver now" onclick="confirmPayment(${o.id})">${icon('check-circle')} Paid</button>`);
                 }
                 actions.push(`<button class="btn btn-sm btn-icon btn-danger" title="Cancel" onclick="setOrderStatus(${o.id}, 'CANCELLED')">${icon('x')}</button>`);
             }
@@ -822,7 +817,7 @@ window.setOrderStatus = async (id, status) => {
 };
 
 window.confirmPayment = async (id) => {
-    if (!confirm('Confirm you received the crypto for order #' + id + ' on your wallet? Delivery starts immediately.')) return;
+    if (!confirm('Confirm you received the payment for order #' + id + '? Delivery starts immediately.')) return;
     try {
         await api(`${ordersPath()}/${id}/confirm-payment`, { method: 'POST' });
         toast('Payment confirmed — delivery triggered');
@@ -839,134 +834,92 @@ window.simulatePayment = async (id) => {
     } catch (e) { toast(e.message, true); }
 };
 
-// ===== Payments (manual) =====
+// ===== Payments (Settings → Payments) =====
 
-let paymentsCache = [];
+/** Baut das Feld-Raster: ein Input pro Coin. prefix = 'wallet' (eigener Shop) oder 'siteWallet' (Plattform). */
+function renderWalletGrid(containerId, prefix) {
+    const grid = $('#' + containerId);
+    if (!grid || grid.children.length) return;
+    grid.innerHTML = COINS.map(([symbol, name, placeholder]) => `
+        <label class="wallet-field">
+            <span class="wallet-label"><b>${symbol}</b> <span class="muted">${name}</span></span>
+            <input class="input" id="${prefix}-${symbol}" placeholder="${placeholder}" autocomplete="off" spellcheck="false">
+        </label>`).join('');
+}
 
 function initPayments() {
-    // Eigene Zahlungsmethoden — für JEDEN Nutzer inkl. Admin (Zahlungen für die eigenen Produkte)
+    renderWalletGrid('walletGrid', 'wallet');
+    if (me.admin) renderWalletGrid('siteWalletGrid', 'siteWallet');
+
+    // Eigene Coin-Wallets — für JEDEN Shop, ein Feld pro Coin, einfach Save drücken
     $('#savePaymentConfigBtn')?.addEventListener('click', async () => {
+        const wallets = {};
+        COINS.forEach(([symbol]) => { wallets[symbol] = ($('#wallet-' + symbol)?.value || '').trim(); });
         try {
-            const result = await api('/api/my/payment-config', {
-                method: 'PUT',
-                body: {
-                    paygateWallet: $('#myPgWallet').value,
-                    paygateEmail: $('#myPgEmail').value,
-                    cryptoWallets: $('#myCryptoWallets').value,
-                    logWebhookUrl: $('#myLogWebhook').value,
-                    nowpaymentsApiKey: $('#myNpKey').value || null,
-                    nowpaymentsIpnSecret: $('#myNpSecret').value || null
-                }
-            });
-            $('#myNpKey').value = '';
-            $('#myNpSecret').value = '';
+            const result = await api('/api/my/payment-config', { method: 'PUT', body: { wallets } });
             applyMyPaymentConfig(result);
-            toast('Payment methods saved');
+            toast('Wallets saved');
         } catch (e) { toast(e.message, true); }
     });
 
-    $('#newPaymentBtn').addEventListener('click', () => openPaymentModal(null));
-    $('#paymentSearch').addEventListener('input', renderPayments);
-    $('#paymentStatusFilter').addEventListener('change', renderPayments);
-    $('#paymentMethodFilter').addEventListener('change', renderPayments);
-
-    $('#manualPaymentForm').addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const id = $('#mpId').value;
-        const dateValue = $('#mpDate').value;
-        const body = {
-            customer: $('#mpCustomer').value,
-            amount: parseFloat($('#mpAmount').value),
-            method: $('#mpMethod').value,
-            status: $('#mpStatus').value,
-            date: dateValue ? new Date(dateValue).toISOString() : null,
-            note: $('#mpNote').value
-        };
+    $('#savePaygateBtn')?.addEventListener('click', async () => {
         try {
-            if (id) await api(apiScope() + '/payments/' + id, { method: 'PUT', body });
-            else await api(apiScope() + '/payments', { method: 'POST', body });
-            closeModals();
-            toast('Payment saved');
-            loadPayments();
+            const result = await api('/api/my/payment-config', {
+                method: 'PUT',
+                body: { paygateWallet: $('#myPgWallet').value, paygateEmail: $('#myPgEmail').value }
+            });
+            applyMyPaymentConfig(result);
+            toast('Card payout saved');
+        } catch (e) { toast(e.message, true); }
+    });
+
+    $('#saveWebhookBtn')?.addEventListener('click', async () => {
+        try {
+            const result = await api('/api/my/payment-config', {
+                method: 'PUT',
+                body: { logWebhookUrl: $('#myLogWebhook').value }
+            });
+            applyMyPaymentConfig(result);
+            toast('Sale logs saved');
+        } catch (e) { toast(e.message, true); }
+    });
+
+    // Plattform-Wallets (Owner) — für Plan-Käufe + Fallback
+    $('#saveSiteWalletsBtn')?.addEventListener('click', async () => {
+        const body = {};
+        COINS.forEach(([symbol]) => { body['wallet' + symbol] = ($('#siteWallet-' + symbol)?.value || '').trim(); });
+        try {
+            settings = await api('/api/admin/settings', { method: 'PUT', body });
+            toast('Platform wallets saved');
         } catch (e) { toast(e.message, true); }
     });
 }
 
 function applyMyPaymentConfig(config) {
-    $('#myPgWallet').value = config.paygateWallet || '';
-    $('#myPgEmail').value = config.paygateEmail || '';
-    $('#myCryptoWallets').value = config.cryptoWallets || '';
-    $('#myLogWebhook').value = config.logWebhookUrl || '';
-    setPaymentStatus('pmPaygateDot', 'pmPaygateBadge', !!config.paygateConnected);
-    // Direct-Krypto: aktiv, sobald Wallets eingetragen sind — NOWPayments ist optional
-    setPaymentStatus('pmCryptoDot', 'pmCryptoBadge', !!config.cryptoConnected || !!(config.cryptoWallets || '').trim());
-    setPaymentStatus('pmWebhookDot', 'pmWebhookBadge', !!config.logWebhookUrl);
+    $('#myPgWallet') && ($('#myPgWallet').value = config.paygateWallet || '');
+    $('#myPgEmail') && ($('#myPgEmail').value = config.paygateEmail || '');
+    $('#myLogWebhook') && ($('#myLogWebhook').value = config.logWebhookUrl || '');
+    const wallets = config.wallets || {};
+    COINS.forEach(([symbol]) => {
+        const input = $('#wallet-' + symbol);
+        if (input) input.value = wallets[symbol] || '';
+    });
+    setPaymentStatus('pmPaygateBadge', !!config.paygateConnected);
+    setPaymentStatus('pmCryptoBadge', !!config.cryptoConnected);
+    setPaymentStatus('pmWebhookBadge', !!config.logWebhookUrl);
 }
 
-async function loadPayments() {
+async function loadPaymentSettings() {
     try { applyMyPaymentConfig(await api('/api/my/payment-config')); } catch (e) { /* optional */ }
-    try {
-        paymentsCache = await api(apiScope() + '/payments');
-        renderPayments();
-    } catch (e) { toast(e.message, true); }
-}
-
-function renderPayments() {
-    const query = ($('#paymentSearch').value || '').toLowerCase();
-    const status = $('#paymentStatusFilter').value;
-    const method = $('#paymentMethodFilter').value;
-    const filtered = paymentsCache.filter(p =>
-        (!query || (p.customer || '').toLowerCase().includes(query) || (p.note || '').toLowerCase().includes(query))
-        && (!status || p.status === status)
-        && (!method || p.method === method));
-
-    const methodLabels = { KREDITKARTE: 'Credit Card', PAYPAL: 'PayPal', UEBERWEISUNG: 'Bank Transfer', KRYPTO: 'Crypto', SONSTIGES: 'Other' };
-    $('#paymentsTable tbody').innerHTML = filtered.map(p => `
-        <tr>
-            <td>${DATE.format(new Date(p.paymentDate))}</td>
-            <td><b>${esc(p.customer)}</b></td>
-            <td>${money(p.amount)}</td>
-            <td>${methodLabels[p.method] || esc(p.method)}</td>
-            <td>${esc(p.note || '—')}</td>
-            <td>${badge(p.status)}</td>
-            <td class="row">
-                <button class="btn btn-sm btn-icon" onclick="editPayment(${p.id})">${icon('edit-2')}</button>
-                <button class="btn btn-sm btn-icon btn-danger" onclick="deletePayment(${p.id})">${icon('trash-2')}</button>
-            </td>
-        </tr>`).join('') || '<tr><td colspan="7" class="muted">No payments</td></tr>';
-}
-
-function openPaymentModal(payment) {
-    $('#paymentModalTitle').textContent = payment ? 'Edit Payment' : 'New Payment';
-    $('#mpId').value = payment?.id || '';
-    $('#mpCustomer').value = payment?.customer || '';
-    $('#mpAmount').value = payment?.amount ?? '';
-    $('#mpMethod').value = payment?.method || 'KREDITKARTE';
-    $('#mpStatus').value = payment?.status || 'PAID';
-    $('#mpNote').value = payment?.note || '';
-    if (payment?.paymentDate) {
-        const d = new Date(payment.paymentDate);
-        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-        $('#mpDate').value = d.toISOString().slice(0, 16);
-    } else {
-        $('#mpDate').value = '';
+    if (me.admin) {
+        COINS.forEach(([symbol]) => {
+            const input = $('#siteWallet-' + symbol);
+            if (input) input.value = settings['wallet' + symbol] || '';
+        });
+        $('#pgWallet') && ($('#pgWallet').value = settings.paygateWallet || '');
+        $('#pgEmail') && ($('#pgEmail').value = settings.paygateEmail || '');
     }
-    $('#manualPaymentModal').hidden = false;
 }
-
-window.editPayment = (id) => {
-    const payment = paymentsCache.find(p => p.id === id);
-    if (payment) openPaymentModal(payment);
-};
-
-window.deletePayment = async (id) => {
-    if (!confirm('Delete this payment?')) return;
-    try {
-        await api(apiScope() + '/payments/' + id, { method: 'DELETE' });
-        toast('Payment deleted');
-        loadPayments();
-    } catch (e) { toast(e.message, true); }
-};
 
 // ===== Customers =====
 
@@ -1298,13 +1251,39 @@ function renderBilling() {
         btn.addEventListener('click', () => startPlanPurchase(btn.dataset.buyPlan)));
 }
 
+/** Plan-Kauf: erst Zahlungsmethode wählen (Karte / Coin), dann Order anlegen + Zahlungsdetails zeigen. */
 async function startPlanPurchase(tierId) {
-    // Karte (PayGate) bevorzugen, sonst Krypto — mit dem aktuell gewählten Abrechnungszeitraum
-    const currency = settings.paygateWallet ? 'KARTE' : 'BTC';
-    try {
-        const result = await api('/api/my/plan/purchase', { method: 'POST', body: { tier: tierId, cycle: billingCycle, currency } });
-        await showPayment(result.orderId);
-    } catch (e) { toast(e.message, true); }
+    let methods = { card: true, coins: [] };
+    try { methods = await api('/api/my/plan/payment-methods'); } catch (e) { /* Fallback: nur Karte */ }
+
+    const buttons = [];
+    if (methods.card) {
+        buttons.push(`<button class="plan-pay-btn" data-paycur="KARTE">${icon('credit-card')}<span><b>Card / Apple Pay</b><small>Secure checkout</small></span></button>`);
+    }
+    (methods.coins || []).forEach(symbol => {
+        const meta = COINS.find(c => c[0] === symbol);
+        buttons.push(`<button class="plan-pay-btn" data-paycur="${COIN_LABEL(symbol)}"><b class="coin-tag">${symbol}</b><span><b>${meta ? meta[1] : symbol}</b><small>Address + QR, auto-detected</small></span></button>`);
+    });
+    if (!buttons.length) { toast('No payment methods available yet — contact support.', true); return; }
+
+    $('#planPayLabel').textContent = `${tierId} Plan · ${billingCycle === 'yearly' ? 'Yearly' : 'Monthly'}`;
+    $('#planPayMethods').innerHTML = buttons.join('');
+    $('#planPayModal').hidden = false;
+
+    $$('#planPayMethods .plan-pay-btn').forEach(btn => btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        try {
+            const result = await api('/api/my/plan/purchase', {
+                method: 'POST',
+                body: { tier: tierId, cycle: billingCycle, currency: btn.dataset.paycur }
+            });
+            $('#planPayModal').hidden = true;
+            await showPayment(result.orderId);
+        } catch (e) {
+            btn.disabled = false;
+            toast(e.message, true);
+        }
+    }));
 }
 
 function initLicenses() {
@@ -1753,11 +1732,8 @@ async function deleteEmbed() {
 
 // ===== Settings =====
 
-/** Holt die eigenen (pro-Nutzer) Panels in die Settings-Tabs — so sieht JEDER Nutzer nützliche Settings. */
+/** Holt den Delivery-Editor in den Settings-Tab — so sieht JEDER Nutzer nützliche Settings. */
 function relocateUserSettings() {
-    const pm = $('#myProvidersPanel');
-    const pmTab = $('#settingsTabPaymentMethods');
-    if (pm && pmTab && pm.parentElement !== pmTab) pmTab.appendChild(pm);
     const dg = $('.delivery-grid');
     const dTab = $('#settingsTabDelivery');
     if (dg && dTab && dg.parentElement !== dTab) dTab.appendChild(dg);
@@ -1775,11 +1751,11 @@ function selectSettingsTab(name) {
     // Nur vorhandene Panels umschalten — für Nutzer sind die admin-only-Panels aus dem DOM entfernt
     const panels = { general: 'settingsTabGeneral', branding: 'settingsTabBranding',
         payments: 'settingsTabPayments', logs: 'settingsTabLogs',
-        paymentmethods: 'settingsTabPaymentMethods', delivery: 'settingsTabDelivery',
+        delivery: 'settingsTabDelivery',
         coupons: 'settingsTabCoupons', mybranding: 'settingsTabMyBranding' };
     Object.entries(panels).forEach(([tab, id]) => { const el = $('#' + id); if (el) el.hidden = tab !== name; });
     if (name === 'coupons') loadDiscounts();
-    if (name === 'paymentmethods') loadPayments();
+    if (name === 'payments') loadPaymentSettings();
     if (name === 'delivery') loadDelivery();
     if (name === 'mybranding') loadMyBranding();
 }
@@ -1883,7 +1859,6 @@ function initSettings() {
                 }
             });
             toast('PayGate saved');
-            updateSitePaymentStatus();
         } catch (e) { toast(e.message, true); }
     });
 
@@ -1899,7 +1874,17 @@ function initSettings() {
             $('#sStripeWebhookSecret').value = '';
             settings = await api('/api/admin/settings'); // Status (stripeConfigured) neu laden
             toast('Stripe saved');
-            updateSitePaymentStatus();
+        } catch (e) { toast(e.message, true); }
+    });
+
+    $('#botSettingsForm')?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        try {
+            settings = await api('/api/admin/settings', {
+                method: 'PUT',
+                body: { autoRoleId: $('#sAutoRoleId').value.trim() }
+            });
+            toast('Bot settings saved');
         } catch (e) { toast(e.message, true); }
     });
 }
@@ -1929,25 +1914,14 @@ async function loadSettingsForm() {
     $('#sLogOrders').checked = settings.logOrders !== 'false';
     $('#sLogSales').checked = settings.logSales !== 'false';
     $('#sLogErrors').checked = settings.logErrors !== 'false';
-    $('#pgWallet').value = settings.paygateWallet || '';
-    $('#pgEmail').value = settings.paygateEmail || '';
-    updateSitePaymentStatus();
+    $('#sAutoRoleId').value = settings.autoRoleId || '';
 }
 
-function setPaymentStatus(dotId, badgeId, connected) {
-    const dot = $('#' + dotId);
+function setPaymentStatus(badgeId, connected) {
     const badge = $('#' + badgeId);
-    if (!dot || !badge) return;
-    dot.className = 'status-dot ' + (connected ? 'online' : 'offline');
+    if (!badge) return;
     badge.textContent = connected ? 'Active' : 'Setup required';
     badge.className = 'provider-badge' + (connected ? ' connected' : '');
-}
-
-function updateSitePaymentStatus() {
-    setPaymentStatus('sitePaygateDot', 'sitePaygateBadge', !!settings.paygateWallet);
-    setPaymentStatus('siteStripeDot', 'siteStripeBadge', settings.stripeConfigured === 'true');
-    setPaymentStatus('siteCryptoDot', 'siteCryptoBadge',
-        settings.cryptoConfigured === 'true' && settings.cryptoProviderActive === 'true');
 }
 
 // ===== Delivery Message =====

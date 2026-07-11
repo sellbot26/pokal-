@@ -27,6 +27,7 @@ public class BotService {
     private final JdaHolder holder;
     private final ShopCommands shopCommands;
     private final AdminCommands adminCommands;
+    private final MemberJoinListener memberJoinListener;
 
     @EventListener(ApplicationReadyEvent.class)
     public void start() throws InterruptedException {
@@ -35,11 +36,27 @@ public class BotService {
             log.warn("Kein DISCORD_BOT_TOKEN gesetzt — der Bot wird nicht gestartet (Dashboard läuft trotzdem).");
             return;
         }
-        JDA jda = JDABuilder.createDefault(token)
-                .setActivity(Activity.watching(props.getBrandName()))
-                .addEventListeners(shopCommands, adminCommands)
-                .build()
-                .awaitReady();
+        // Für Auto-Role bei Server-Join wird das privilegierte "Server Members Intent" gebraucht
+        // (Discord Developer Portal → Bot → Privileged Gateway Intents). Ist es nicht freigeschaltet,
+        // startet der Bot trotzdem — nur ohne Auto-Role.
+        JDA jda;
+        try {
+            jda = JDABuilder.createDefault(token)
+                    .enableIntents(net.dv8tion.jda.api.requests.GatewayIntent.GUILD_MEMBERS)
+                    .setActivity(Activity.watching(props.getBrandName()))
+                    .addEventListeners(shopCommands, adminCommands, memberJoinListener)
+                    .build()
+                    .awaitReady();
+        } catch (Exception e) {
+            log.warn("Bot-Start mit GUILD_MEMBERS-Intent fehlgeschlagen ({}). Auto-Role ist deaktiviert — "
+                    + "aktiviere das 'Server Members Intent' im Discord Developer Portal. Starte ohne Intent…",
+                    e.getMessage());
+            jda = JDABuilder.createDefault(token)
+                    .setActivity(Activity.watching(props.getBrandName()))
+                    .addEventListeners(shopCommands, adminCommands)
+                    .build()
+                    .awaitReady();
+        }
         holder.set(jda);
         registerCommands(jda);
         log.info("Discord-Bot gestartet als {}", jda.getSelfUser().getName());

@@ -10,4 +10,6 @@ public interface PaymentRepo extends JpaRepository<Payment, Long> {
     Optional<Payment> findByProviderPaymentId(String providerPaymentId);
 
     Optional<Payment> findByOrderId(Long orderId);
+
+    long countByStatusAndProviderAndPayAddress(Payment.Status status, String provider, String payAddress);
 }

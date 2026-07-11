@@ -40,6 +40,7 @@ public class PlanApiController {
     private final SavedEmbedRepo embedRepo;
     private final ShopUserRepo userRepo;
     private final GuildAccessService guildAccess;
+    private final com.shop.service.SettingsService settings;
 
     /** Öffentliche Preisliste — für die Landingpage, kein Login nötig. */
     @GetMapping("/api/plans")
@@ -69,6 +70,18 @@ public class PlanApiController {
         return result;
     }
 
+    /** Verfügbare Zahlungsmethoden für den Plan-Kauf: Karte immer, Coins nur mit hinterlegter Plattform-Wallet. */
+    @GetMapping("/api/my/plan/payment-methods")
+    public Map<String, Object> planPaymentMethods() {
+        List<String> coins = com.shop.payment.CryptoWallets.SYMBOLS.stream()
+                .filter(symbol -> {
+                    String wallet = settings.get("wallet" + symbol, null);
+                    return wallet != null && !wallet.isBlank();
+                })
+                .toList();
+        return Map.of("card", true, "coins", coins);
+    }
+
     /** Startet den Kauf eines Plans für den eingeloggten Nutzer — liefert eine orderId, die wie eine normale Bestellung bezahlt wird. */
     @PostMapping("/api/my/plan/purchase")
     public Map<String, Object> purchase(@RequestBody PurchaseRequest req, @AuthenticationPrincipal OAuth2User principal) {
@@ -83,8 +96,12 @@ public class PlanApiController {
         String username = principal.getAttribute("username");
         Order order = orderService.createOrder(userId, username, product.getId(), 1, null);
 
-        // Plan-Käufe laufen IMMER über PayGate (Karte) auf die feste Plattform-Wallet — kein Krypto.
-        Payment payment = paymentService.createPlanPayment(order);
+        // Karte → PayGate auf die feste Plattform-Wallet. Krypto → direkt an die
+        // Plattform-Wallets aus den Site-Settings (Adresse + Betrag + QR, Auto-Erkennung für BTC/LTC).
+        String currency = req.currency() == null || req.currency().isBlank() ? PaymentService.CARD : req.currency();
+        Payment payment = PaymentService.CARD.equals(currency)
+                ? paymentService.createPlanPayment(order)
+                : paymentService.createPayment(order, currency);
 
         return Map.of("orderId", order.getId(), "provider", payment.getProvider());
     }

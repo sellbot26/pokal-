@@ -25,8 +25,9 @@ public class SettingsService {
     public static final Set<String> ALLOWED_KEYS = Set.of(
             "shopName", "brandColor", "logoUrl", "bannerUrl", "description",
             "currency", "discordInvite", "supportServer", "footerText", "socialLinks",
-            "maintenance", "monthlyGoal", "productOrder",
+            "maintenance", "monthlyGoal", "productOrder", "autoRoleId",
             "walletBTC", "walletETH", "walletLTC", "walletSOL", "walletUSDT", "walletUSDC",
+            "walletDOGE", "walletXRP", "walletBCH", "walletTRX",
             "paygateWallet", "paygateCheckoutProvider", "paygateEmail",
             // Discord-Channels + Logging, direkt über das Dashboard steuerbar
             "logChannelId", "reviewChannelId", "logSales", "logErrors", "logOrders", "siteLogWebhookUrl",

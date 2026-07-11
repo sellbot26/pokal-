@@ -68,8 +68,11 @@ public class CryptoWatchService {
         String address = payment.getPayAddress();
         if (address == null || address.isBlank() || payment.getPayAmount() == null) return false;
 
+        // Enges Fenster (±0,1 %): Beträge werden pro offener Zahlung um +0,02 € versetzt,
+        // damit jede eingehende Zahlung eindeutig EINEM Käufer zugeordnet werden kann.
         long expectedSats = payment.getPayAmount().movePointRight(8).longValue();
-        long minSats = (long) (expectedSats * 0.995); // kleine Toleranz für Rundung
+        long minSats = (long) (expectedSats * 0.999);
+        long maxSats = (long) (expectedSats * 1.001) + 1;
         long createdAt = orderRepo.findById(payment.getOrderId())
                 .map(Order::getCreatedAt).map(java.time.Instant::getEpochSecond).orElse(0L) - 900; // 15 Min Puffer
 
@@ -97,7 +100,7 @@ public class CryptoWatchService {
                     }
                 }
             }
-            if (toUs >= minSats) return true;
+            if (toUs >= minSats && toUs <= maxSats) return true;
         }
         return false;
     }

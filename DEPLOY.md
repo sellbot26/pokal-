@@ -54,10 +54,8 @@ ADMIN_IDS=1508539971160637515  (du bleibst Owner)
 ```
 **Zahlungen:**
 ```
-PAYMENT_PROVIDER=nowpayments   # für ECHTE Zahlungen (nicht "mock"!)
+PAYMENT_PROVIDER=direct        # Krypto direkt an die Wallet (nicht "mock"!)
 PAYGATE_WALLET=0x9824D446002d2AfBFac1D9B10dBB275EF46330fe
-NOWPAYMENTS_API_KEY=...         (falls Krypto)
-NOWPAYMENTS_IPN_SECRET=...
 STRIPE_SECRET_KEY=sk_live_...   (falls Stripe)
 STRIPE_WEBHOOK_SECRET=whsec_...
 ```
@@ -92,7 +90,7 @@ https://pokal.shop/login/oauth2/code/discord
 (bzw. `https://www.pokal.shop/...`, je nachdem was deine Haupt-URL ist). Sonst schlägt der Login mit „redirect_uri mismatch" fehl.
 
 ## 7) Payment-Webhooks auf die neue Domain zeigen
-- **NOWPayments**: IPN-URL = `https://pokal.shop/api/webhook/payment`
+- **Krypto (direct)**: keine Webhooks nötig — BTC/LTC werden automatisch erkannt, Rest per Klick bestätigen
 - **Stripe**: Webhook-Endpoint = `https://pokal.shop/api/webhook/stripe` (Event `checkout.session.completed`) → das Signing-Secret als `STRIPE_WEBHOOK_SECRET` eintragen
 - **PayGate**: Callback läuft automatisch über `BASE_URL` — nichts zu tun
 

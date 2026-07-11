@@ -1,6 +1,5 @@
 package com.shop.payment;
 
-import com.shop.config.ShopProperties;
 import com.shop.model.Order;
 import com.shop.model.ShopUser;
 import lombok.RequiredArgsConstructor;
@@ -12,14 +11,11 @@ import java.util.UUID;
 
 /**
  * Simulierter Zahlungsanbieter für Entwicklung/Tests ohne echten API-Key.
- * Zahlungen können im Admin-Dashboard oder per Webhook mit dem Header
- * "x-nowpayments-sig: &lt;IPN-Secret oder 'mock'&gt;" bestätigt werden.
+ * Zahlungen werden im Dashboard über den Simulate-Button bestätigt.
  */
 @Component
 @RequiredArgsConstructor
 public class MockPaymentProvider implements PaymentProvider {
-
-    private final ShopProperties props;
 
     @Override
     public String name() {
@@ -37,10 +33,8 @@ public class MockPaymentProvider implements PaymentProvider {
     @Override
     public boolean verifyWebhook(String signature, String rawBody) {
         if (signature == null) return false;
-        String secret = props.getPayment().getNowpayments().getIpnSecret();
-        String expected = (secret == null || secret.isBlank()) ? "mock" : secret;
         return MessageDigest.isEqual(
-                expected.getBytes(StandardCharsets.UTF_8),
+                "mock".getBytes(StandardCharsets.UTF_8),
                 signature.getBytes(StandardCharsets.UTF_8));
     }
 }

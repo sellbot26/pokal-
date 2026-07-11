@@ -19,6 +19,11 @@ public class CryptoRateService {
         put("LTC", "litecoin");
         put("USDT", "tether");
         put("SOL", "solana");
+        put("USDC", "usd-coin");
+        put("DOGE", "dogecoin");
+        put("XRP", "ripple");
+        put("BCH", "bitcoin-cash");
+        put("TRX", "tron");
     }};
 
     private final RestClient client = RestClient.create("https://api.coingecko.com");

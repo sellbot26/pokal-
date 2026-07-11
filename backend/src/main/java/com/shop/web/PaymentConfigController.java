@@ -1,6 +1,7 @@
 package com.shop.web;
 
 import com.shop.model.ShopUser;
+import com.shop.payment.CryptoWallets;
 import com.shop.repo.ShopUserRepo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -14,17 +15,16 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Eigene Zahlungsmethoden eines Verkäufers: PayGate-Wallet (Karte) und
- * NOWPayments-Account (Krypto). Zahlungen für seine Produkte laufen dann
- * direkt auf seine Wallet / sein Konto statt auf die Site-Konfiguration.
+ * Eigene Zahlungsmethoden eines Verkäufers: eine Wallet-Adresse pro Coin
+ * (Zahlungen laufen direkt auf seine Wallets), PayGate-Wallet für Karte
+ * und ein Discord-Webhook für Verkaufs-Logs.
  */
 @RestController
 @RequiredArgsConstructor
 public class PaymentConfigController {
 
     public record ConfigRequest(String paygateWallet, String paygateEmail,
-                                String nowpaymentsApiKey, String nowpaymentsIpnSecret,
-                                String cryptoWallets, String logWebhookUrl) {}
+                                Map<String, String> wallets, String logWebhookUrl) {}
 
     private final ShopUserRepo userRepo;
 
@@ -34,11 +34,13 @@ public class PaymentConfigController {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("paygateWallet", nullSafe(user.getPaygateWallet()));
         result.put("paygateEmail", nullSafe(user.getPaygateEmail()));
-        result.put("cryptoWallets", nullSafe(user.getCryptoWallets()));
         result.put("logWebhookUrl", nullSafe(user.getLogWebhookUrl()));
-        // API-Key/Secret nie zurückgeben — nur ob sie gesetzt sind
-        result.put("cryptoConnected", user.getNowpaymentsApiKey() != null && !user.getNowpaymentsApiKey().isBlank());
+        Map<String, String> wallets = new LinkedHashMap<>();
+        Map<String, String> stored = CryptoWallets.parse(user.getCryptoWallets());
+        for (String symbol : CryptoWallets.SYMBOLS) wallets.put(symbol, stored.getOrDefault(symbol, ""));
+        result.put("wallets", wallets);
         result.put("paygateConnected", user.getPaygateWallet() != null && !user.getPaygateWallet().isBlank());
+        result.put("cryptoConnected", !stored.isEmpty());
         return result;
     }
 
@@ -47,7 +49,7 @@ public class PaymentConfigController {
         ShopUser user = userRepo.findById(principal.<String>getAttribute("id")).orElseThrow();
         if (req.paygateWallet() != null) user.setPaygateWallet(req.paygateWallet().trim());
         if (req.paygateEmail() != null) user.setPaygateEmail(req.paygateEmail().trim());
-        if (req.cryptoWallets() != null) user.setCryptoWallets(req.cryptoWallets().trim());
+        if (req.wallets() != null) user.setCryptoWallets(CryptoWallets.serialize(req.wallets()));
         if (req.logWebhookUrl() != null) {
             String url = req.logWebhookUrl().trim();
             if (!url.isEmpty() && !url.startsWith("https://discord.com/api/webhooks/")
@@ -55,13 +57,6 @@ public class PaymentConfigController {
                 throw new IllegalArgumentException("Please paste a valid Discord webhook URL.");
             }
             user.setLogWebhookUrl(url);
-        }
-        // Leerer String = löschen, null = nicht anfassen (damit der Key beim Speichern anderer Felder erhalten bleibt)
-        if (req.nowpaymentsApiKey() != null) {
-            user.setNowpaymentsApiKey(req.nowpaymentsApiKey().isBlank() ? null : req.nowpaymentsApiKey().trim());
-        }
-        if (req.nowpaymentsIpnSecret() != null) {
-            user.setNowpaymentsIpnSecret(req.nowpaymentsIpnSecret().isBlank() ? null : req.nowpaymentsIpnSecret().trim());
         }
         userRepo.save(user);
         return get(principal);

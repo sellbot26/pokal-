@@ -45,16 +45,8 @@ public class ShopProperties {
     @Setter
     public static class Payment {
         private String provider = "mock";
-        private NowPayments nowpayments = new NowPayments();
         private PayGate paygate = new PayGate();
         private Stripe stripe = new Stripe();
-
-        @Getter
-        @Setter
-        public static class NowPayments {
-            private String apiKey;
-            private String ipnSecret;
-        }
 
         @Getter
         @Setter

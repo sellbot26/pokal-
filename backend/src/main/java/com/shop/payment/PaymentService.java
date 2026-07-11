@@ -34,10 +34,15 @@ public class PaymentService {
     /** Anzeigename -> API-Code beim Provider */
     public static final Map<String, String> CURRENCIES = new LinkedHashMap<>() {{
         put("BTC", "btc");
-        put("ETH", "eth");
         put("LTC", "ltc");
-        put("USDT-TRC20", "usdttrc20");
+        put("ETH", "eth");
         put("SOL", "sol");
+        put("USDT-TRC20", "usdttrc20");
+        put("USDC", "usdc");
+        put("DOGE", "doge");
+        put("XRP", "xrp");
+        put("BCH", "bch");
+        put("TRX", "trx");
     }};
 
     /** Pseudo-Währung für Kartenzahlung über PayGate. */
@@ -93,12 +98,6 @@ public class PaymentService {
                 .orElse(null);
     }
 
-    private PaymentProvider provider() {
-        PaymentProvider p = providers.get(props.getPayment().getProvider());
-        if (p == null) throw new IllegalStateException("Unknown payment provider: " + props.getPayment().getProvider());
-        return p;
-    }
-
     @Transactional
     public Payment createPayment(Order order, String currencyLabel) {
         boolean card = CARD.equals(currencyLabel);
@@ -113,13 +112,12 @@ public class PaymentService {
 
         // Provider-Wahl:
         //  - Stripe / Karte brauchen eine echte Checkout-URL → IMMER der echte Provider.
-        //  - Krypto: eigener NOWPayments-Account des Verkäufers > Site-NOWPayments >
-        //    DIRECT (Adresse + Kurs, manuelle Bestätigung — funktioniert ohne jeden API-Key).
-        //    Mock nur, wenn explizit PAYMENT_PROVIDER=mock gesetzt ist (lokales Testen).
+        //  - Krypto: DIRECT (Adresse + Kurs, auto-erkannt bzw. Ein-Klick-Bestätigung —
+        //    funktioniert ohne jeden API-Key). Mock nur bei PAYMENT_PROVIDER=mock (lokales Testen).
         PaymentProvider chosen;
         if (stripe) chosen = requireProvider("stripe");
         else if (card) chosen = requireProvider("paygate");
-        else chosen = cryptoProvider(merchantFor(order));
+        else chosen = cryptoProvider();
         CreatedPayment created = chosen.create(order, apiCode, merchantFor(order));
         Payment payment = new Payment();
         payment.setOrderId(order.getId());
@@ -137,31 +135,31 @@ public class PaymentService {
         return p;
     }
 
-    /** Krypto-Routing: Verkäufer-NOWPayments > Site-NOWPayments > mock (nur explizit) > direct. */
-    private PaymentProvider cryptoProvider(ShopUser merchant) {
-        if (merchant != null && merchant.getNowpaymentsApiKey() != null && !merchant.getNowpaymentsApiKey().isBlank()) {
-            return requireProvider("nowpayments");
-        }
-        String configured = props.getPayment().getProvider();
-        if ("nowpayments".equals(configured)) {
-            String siteKey = props.getPayment().getNowpayments().getApiKey();
-            if (siteKey != null && !siteKey.isBlank()) return requireProvider("nowpayments");
-        }
-        if ("mock".equals(configured)) return requireProvider("mock");
+    /** Krypto-Routing: mock (nur explizit gesetzt) > direct — kein externer Anbieter nötig. */
+    private PaymentProvider cryptoProvider() {
+        if ("mock".equals(props.getPayment().getProvider())) return requireProvider("mock");
         return requireProvider("direct");
     }
 
     /**
-     * Manuelle Zahlungsbestätigung durch den Verkäufer — nur für DIRECT-Zahlungen
-     * (Käufer hat direkt an die Wallet überwiesen, kein automatischer Webhook).
-     * Löst die normale Lieferung aus.
+     * Manuelle Zahlungsbestätigung durch den Verkäufer/Owner im Dashboard: markiert die
+     * offene Zahlung als bezahlt und löst die Lieferung aus. Funktioniert auch, wenn der
+     * Käufer noch keine Zahlungsart gewählt hatte (dann wird eine manuelle Zahlung angelegt).
      */
     @Transactional
     public void confirmDirectPayment(long orderId) {
-        Payment payment = paymentRepo.findByOrderId(orderId)
-                .orElseThrow(() -> new IllegalArgumentException("No payment for order #" + orderId));
-        if (!"direct".equals(payment.getProvider())) {
-            throw new IllegalStateException("Only direct wallet payments can be confirmed manually.");
+        Payment payment = paymentRepo.findByOrderId(orderId).orElse(null);
+        if (payment == null) {
+            Order order = orderRepo.findById(orderId)
+                    .orElseThrow(() -> new IllegalArgumentException("Order #" + orderId + " not found."));
+            if (order.getStatus() != Order.Status.PENDING) {
+                throw new IllegalStateException("Order #" + orderId + " is already " + order.getStatus() + ".");
+            }
+            payment = new Payment();
+            payment.setOrderId(orderId);
+            payment.setProvider("manual");
+            payment.setProviderPaymentId("MANUAL-" + orderId);
+            payment = paymentRepo.save(payment);
         }
         if (payment.getStatus() != Payment.Status.WAITING) {
             throw new IllegalStateException("This payment is already " + payment.getStatus() + ".");
@@ -237,41 +235,6 @@ public class PaymentService {
             log.info("PayGate payment {} received: {} USDC", token, valueCoin);
         }
         markFinished(payment, txHash);
-    }
-
-    /** Verarbeitet den IPN-Webhook des Zahlungsanbieters. */
-    @Transactional
-    public void handleWebhook(String signature, String rawBody) throws Exception {
-        JsonNode node = mapper.readTree(rawBody);
-        String paymentId = node.path("payment_id").asText();
-        String status = node.path("payment_status").asText();
-        String txHash = node.hasNonNull("payin_hash") ? node.get("payin_hash").asText() : null;
-
-        Payment payment = paymentRepo.findByProviderPaymentId(paymentId)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown payment: " + paymentId));
-
-        // Signatur gegen das Site-Secret prüfen — oder gegen das IPN-Secret des Verkäufers,
-        // falls die Zahlung über dessen eigenen NOWPayments-Account lief.
-        boolean valid = provider().verifyWebhook(signature, rawBody);
-        if (!valid) {
-            ShopUser merchant = orderRepo.findById(payment.getOrderId()).map(this::merchantFor).orElse(null);
-            if (merchant != null && providers.get("nowpayments") instanceof NowPaymentsProvider np) {
-                valid = np.verifyWithSecret(signature, rawBody, merchant.getNowpaymentsIpnSecret());
-            }
-        }
-        if (!valid) {
-            botLog.error("🚨 Webhook Rejected", "Invalid signature on an incoming payment webhook.");
-            throw new SecurityException("Invalid webhook signature");
-        }
-
-        switch (status) {
-            case "finished", "confirmed" -> markFinished(payment, txHash);
-            case "expired" -> markClosed(payment, Payment.Status.EXPIRED, Order.Status.EXPIRED);
-            case "failed", "refunded" -> markClosed(payment, Payment.Status.FAILED, Order.Status.CANCELLED);
-            case "partially_paid" -> botLog.error("⚠️ Partial Payment",
-                    "Order #" + payment.getOrderId() + " was only partially paid (payment " + paymentId + ").");
-            default -> log.info("Webhook status '{}' for payment {} — no action", status, paymentId);
-        }
     }
 
     /** Bestätigt eine Zahlung manuell — nur im Mock-Modus erlaubt (zum Testen). */

@@ -39,11 +39,7 @@ public class ShopUser {
     private String paygateEmail;
     private String paygateCheckoutProvider;
 
-    /** Eigener NOWPayments-Account für Krypto-Zahlungen (BTC/ETH/LTC/SOL/USDT). */
-    private String nowpaymentsApiKey;
-    private String nowpaymentsIpnSecret;
-
-    /** Eigene Krypto-Wallet-Adressen (frei, eine pro Zeile, z. B. "BTC: bc1..."). */
+    /** Eigene Krypto-Wallet-Adressen (eine pro Zeile, z. B. "BTC: bc1..."). */
     @jakarta.persistence.Column(columnDefinition = "text")
     private String cryptoWallets;
 
