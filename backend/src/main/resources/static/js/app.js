@@ -1136,25 +1136,13 @@ const PLAN_ICONS = { FREE: 'box', PRO: 'sparkles', BUSINESS: 'crown' };
 let billingCycle = 'yearly';   // 'monthly' | 'yearly' — vom Toggle gesteuert
 let billingState = null;       // { plans, currentId } für Re-Render beim Umschalten
 
-function initBilling() {
-    $$('#billingToggle .billing-toggle-btn').forEach(btn => btn.addEventListener('click', () => {
-        $$('#billingToggle .billing-toggle-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        billingCycle = btn.dataset.cycle === 'monthly' ? 'monthly' : 'yearly';
-        renderPlanGrid();
-    }));
-}
+function initBilling() { /* Steuerung läuft über Event-Delegation in renderBilling */ }
 
 async function loadBillingSection() {
     try {
         const [plan, plans] = await Promise.all([api('/api/my/plan'), api('/api/plans')]);
-        const currentId = plan.isSiteAdmin ? null : plan.tier.id;
-        const expiry = plan.expiresAt ? ` · expires ${DATE.format(new Date(plan.expiresAt))}` : '';
-        $('#currentPlanSub').innerHTML = plan.isSiteAdmin
-            ? 'As the site owner you have <b>no limits</b> — these tiers apply to other users of your dashboard.'
-            : `You're currently on the <span class="badge badge-active">${esc(plan.tier.name)}</span> plan${expiry}.`;
-        billingState = { plans, currentId };
-        renderPlanGrid();
+        billingState = { plans, plan, currentId: plan.isSiteAdmin ? null : plan.tier.id };
+        renderBilling();
     } catch (e) { toast(e.message, true); }
     loadLicenses();
     loadUserPlans();
@@ -1191,44 +1179,123 @@ async function loadUserPlans() {
     } catch (e) { toast(e.message, true); }
 }
 
-function renderPlanGrid() {
+// Marketing-Text + Highlight-Boxen pro Tier (für die SellAuth-Style-Hero-Karten)
+const PLAN_COPY = {
+    PRO: {
+        headline: 'Level up your shop.',
+        highlights: [
+            ['box', 'Up to 50 products', '10× the free plan'],
+            ['message-square', 'Custom embed colors', 'Brand your buy embeds'],
+            ['award', 'Vouch / reviews', 'Verified social proof']
+        ]
+    },
+    BUSINESS: {
+        headline: 'Grow without limits.',
+        highlights: [
+            ['box', 'Unlimited products', 'No caps, ever'],
+            ['sparkles', 'Custom shop branding', 'Your color & footer'],
+            ['users', 'Team & priority', 'Built to scale']
+        ]
+    }
+};
+
+// Vergleichsmatrix Free / Pro / Business
+const PLAN_MATRIX = [
+    ['Storefront', [
+        ['Active products', '5', '50', '∞'],
+        ['Saved embeds', '3', '20', '∞'],
+        ['Custom embed colors', false, true, true],
+        ['Removable branding footer', false, true, true]
+    ]],
+    ['Selling', [
+        ['Crypto & card payments', true, true, true],
+        ['Coupons', false, true, true],
+        ['Auto-role on purchase', false, true, true],
+        ['Vouch / review system', false, true, true]
+    ]],
+    ['Branding & scale', [
+        ['Custom shop branding (DM)', false, false, true],
+        ['Analytics & audit log', true, true, true],
+        ['Priority support', false, false, true]
+    ]]
+];
+
+function planYearlySave(p) {
+    const m = (p.monthlyPrice ?? p.price) * 12, y = p.yearlyPrice ?? 0;
+    return m > 0 && y > 0 ? Math.max(0, Math.round((1 - y / m) * 100)) : 0;
+}
+
+function renderBilling() {
     if (!billingState) return;
-    $('#billingPlanGrid').innerHTML = billingState.plans.map(p => renderPlanCard(p, billingState.currentId)).join('');
-    $$('#billingPlanGrid [data-buy-plan]').forEach(btn =>
-        btn.addEventListener('click', () => startPlanPurchase(btn.dataset.buyPlan)));
-}
+    const { plans, plan, currentId } = billingState;
+    const paid = plans.filter(p => (p.monthlyPrice ?? p.price) > 0);
 
-function planPrice(p) {
-    return billingCycle === 'yearly' ? (p.yearlyPrice ?? p.price) : (p.monthlyPrice ?? p.price);
-}
+    // 1) Aktueller Plan
+    const curName = plan.isSiteAdmin ? 'Owner' : plan.tier.name;
+    const expiry = plan.expiresAt ? 'Renews / expires ' + DATE.format(new Date(plan.expiresAt))
+        : (plan.isSiteAdmin ? 'No limits — you own this dashboard' : (currentId === 'FREE' ? 'Free forever · no card required' : 'Active'));
+    $('#billingCurrent').innerHTML = `
+        <div class="bill-current-dot ${currentId === 'FREE' ? '' : 'on'}"></div>
+        <div><b>${esc(curName)} Plan</b><small>${esc(expiry)}</small></div>
+        <span class="bill-current-badge ${(currentId || 'OWNER').toLowerCase()}">${esc((currentId || 'OWNER'))}</span>`;
 
-function renderPlanCard(p, currentId) {
-    const isCurrent = p.id === currentId;
-    const isFree = (p.monthlyPrice ?? p.price) <= 0;
-    const iconChip = p.id === 'FREE' ? '' :
-        `<div class="plan-card-chip ${p.id === 'BUSINESS' ? 'business' : ''}">${icon(PLAN_ICONS[p.id] || 'sparkles')}</div>`;
-    const cycleLabel = billingCycle === 'yearly' ? '/yr' : '/mo';
-    const priceLine = isFree
-        ? `<div class="plan-price">€ 0 <span>/mo</span></div><div class="plan-tagline">${esc(p.tagline)}</div>`
-        : `<div class="plan-price">${money(planPrice(p))} <span>${cycleLabel}</span></div><div class="plan-tagline">${esc(p.tagline)}</div>`;
-    let cta;
-    if (isCurrent) cta = `<button class="btn plan-current-btn" disabled>Your current plan</button>`;
-    else if (isFree) cta = `<div class="plan-footer">Default plan</div>`;
-    else cta = `<button class="btn btn-primary plan-cta" data-buy-plan="${p.id}">Upgrade to ${esc(p.name)}</button>`;
-
-    return `<div class="plan-card${p.popular ? ' popular' : ''}${isCurrent ? ' is-current' : ''}">
-        ${isCurrent ? '<span class="plan-current-badge">CURRENT PLAN</span>' : ''}
-        <div class="plan-card-head">
-            ${iconChip}
-            <div>
-                <div class="plan-card-name">${esc(p.name)}</div>
-                <span class="plan-badge ${p.id.toLowerCase()}">${p.id}</span>
+    // 2) Hero-Karten pro kaufbarem Tier
+    $('#billingHero').innerHTML = paid.map(p => {
+        const copy = PLAN_COPY[p.id] || { headline: p.tagline, highlights: [] };
+        const isCurrent = p.id === currentId;
+        const save = planYearlySave(p);
+        const price = billingCycle === 'yearly' ? (p.yearlyPrice ?? p.price) : (p.monthlyPrice ?? p.price);
+        const per = billingCycle === 'yearly' ? '/year' : '/month';
+        return `<div class="bill-hero ${p.id.toLowerCase()}">
+            <div class="bill-hero-left">
+                <span class="bill-hero-badge ${p.id.toLowerCase()}">${p.id} PLAN</span>
+                <h2>${esc(copy.headline)}</h2>
+                <div class="bill-highlights">
+                    ${copy.highlights.map(([ic, t, s]) => `<div class="bill-hl"><span class="bill-hl-ic">${icon(ic)}</span><div><b>${esc(t)}</b><small>${esc(s)}</small></div></div>`).join('')}
+                </div>
+                <div class="bill-checklist">
+                    ${p.features.map(f => `<span>${icon('check-circle')}${esc(f)}</span>`).join('')}
+                </div>
             </div>
-        </div>
-        ${priceLine}
-        <ul class="plan-list">${p.features.map(f => `<li>${icon('check-circle')}${esc(f)}</li>`).join('')}</ul>
-        ${cta}
-    </div>`;
+            <div class="bill-hero-right">
+                <div class="bill-dur-label">CHOOSE A DURATION</div>
+                <div class="bill-dur">
+                    <button data-cycle="monthly" class="${billingCycle === 'monthly' ? 'active' : ''}">Monthly</button>
+                    <button data-cycle="yearly" class="${billingCycle === 'yearly' ? 'active' : ''}">Yearly ${save ? `<small>save ${save}%</small>` : ''}</button>
+                </div>
+                <div class="bill-price">${money(price)}<span>${per}</span></div>
+                <div class="bill-price-note">${save ? `Save ${save}% with yearly billing` : 'Flexible billing'}</div>
+                ${isCurrent
+                    ? '<button class="btn bill-cta" disabled>Your current plan</button>'
+                    : `<button class="btn btn-primary bill-cta" data-buy-plan="${p.id}">Get ${esc(p.name)} Plan »</button>`}
+                <div class="bill-note">One-time payment · No automatic renewal</div>
+            </div>
+        </div>`;
+    }).join('');
+
+    // 3) Vergleichstabelle
+    const cell = v => v === true ? `<span class="mx-yes">${icon('check-circle')}</span>`
+        : v === false ? '<span class="mx-no">—</span>' : `<b>${esc(v)}</b>`;
+    $('#billingCompare').innerHTML = `
+        <div class="panel bill-compare">
+            <table class="mx-table">
+                <thead><tr><th>Feature</th><th>Free</th><th class="mx-pro">Pro</th><th class="mx-biz">Business</th></tr></thead>
+                <tbody>
+                    ${PLAN_MATRIX.map(([group, rows]) => `
+                        <tr class="mx-group"><td colspan="4">${esc(group)}</td></tr>
+                        ${rows.map(([label, f, pr, b]) => `<tr><td>${esc(label)}</td><td>${cell(f)}</td><td>${cell(pr)}</td><td>${cell(b)}</td></tr>`).join('')}
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>`;
+
+    // Interaktion (Delegation)
+    $('#billingHero').querySelectorAll('[data-cycle]').forEach(btn => btn.addEventListener('click', () => {
+        billingCycle = btn.dataset.cycle === 'monthly' ? 'monthly' : 'yearly';
+        renderBilling();
+    }));
+    $('#billingHero').querySelectorAll('[data-buy-plan]').forEach(btn =>
+        btn.addEventListener('click', () => startPlanPurchase(btn.dataset.buyPlan)));
 }
 
 async function startPlanPurchase(tierId) {

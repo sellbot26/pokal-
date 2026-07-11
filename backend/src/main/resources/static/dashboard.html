@@ -55,6 +55,7 @@
 
     <main class="main">
         <div class="topbar">
+            <button class="topbar-gear" title="Settings" onclick="showSection('settings')"><span data-icon="settings"></span></button>
             <div class="topbar-user">
                 <div class="topbar-meta">
                     <span class="topbar-name" id="topbarName"></span>
@@ -208,7 +209,7 @@
                             <label>Your wallet addresses (one per line) — buyers pay straight to these
                                 <textarea class="input" id="myCryptoWallets" rows="3" placeholder="BTC: bc1…&#10;ETH: 0x…&#10;LTC: ltc1…&#10;SOL: …&#10;USDT: T…"></textarea>
                             </label>
-                            <small class="muted">Works instantly, no account needed: the buyer gets your address + live-converted amount + QR code. You confirm the payment in Orders with one click (“Paid”) and delivery runs automatically.</small>
+                            <small class="muted">Works instantly, no account or API needed. The buyer gets your address + live-converted amount + QR code. <b>BTC &amp; LTC are auto-detected</b> on the blockchain and confirmed automatically; other coins you confirm in Orders with one click (“Paid”). Delivery runs automatically either way.</small>
                             <div class="row" style="margin-top:12px">
                                 <label class="grow">NOWPayments API key (optional — auto-confirmation) <input class="input" id="myNpKey" type="password" placeholder="Leave empty to keep current"></label>
                                 <label class="grow">IPN secret <input class="input" id="myNpSecret" type="password" placeholder="Leave empty to keep current"></label>
@@ -564,18 +565,13 @@
         <!-- ===== Billing & Plan ===== -->
         <section id="section-billing" class="section" hidden>
             <div class="page-head">
-                <h1>Billing &amp; Plans</h1>
-                <p class="page-sub" id="currentPlanSub">You're currently on the Free plan.</p>
+                <h1>Subscription</h1>
+                <p class="page-sub">Manage your plan and billing.</p>
             </div>
 
-            <div class="billing-toggle-wrap">
-                <div class="billing-toggle" id="billingToggle">
-                    <button class="billing-toggle-btn" data-cycle="monthly">Monthly</button>
-                    <button class="billing-toggle-btn active" data-cycle="yearly">Yearly <span class="save-pill">SAVE 20%</span></button>
-                </div>
-            </div>
-
-            <div class="plan-cards" id="billingPlanGrid"></div>
+            <div id="billingCurrent" class="bill-current"></div>
+            <div id="billingHero"></div>
+            <div id="billingCompare"></div>
 
             <div class="panel" style="margin-top:24px">
                 <div class="panel-head">
