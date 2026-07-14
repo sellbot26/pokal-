@@ -40,6 +40,23 @@ public class WebhookController {
     }
 
     /**
+     * PayPal IPN (Instant Payment Notification) für Friends-&-Family-Zahlungen. PayPal sendet die
+     * Zahlungsdaten als form-urlencoded POST; der Rohtext wird zur Validierung an PayPal
+     * zurückgeschickt. Antwort ist IMMER 200 (PayPal erwartet nur eine Empfangsbestätigung).
+     */
+    @PostMapping(value = "/api/webhook/paypal", consumes = "application/x-www-form-urlencoded")
+    public ResponseEntity<String> paypalIpn(@RequestBody String rawBody) {
+        try {
+            paymentService.handlePayPalIpn(rawBody);
+        } catch (SecurityException e) {
+            log.warn("PayPal IPN abgelehnt (nicht verifiziert)");
+        } catch (Exception e) {
+            log.error("PayPal-IPN-Verarbeitung fehlgeschlagen", e);
+        }
+        return ResponseEntity.ok("ok");
+    }
+
+    /**
      * PayGate-Callback (GET). Verifikation über das unerratbare UUID-Token,
      * das nur der Server und PayGate kennen.
      */

@@ -20,6 +20,8 @@ public class Product {
         ROLE,
         /** Lizenzkey aus dem Key-Pool; Keys werden separat eingepflegt */
         KEY,
+        /** Account/Serial aus dem Pool (z. B. "email:pass"); eine Zeile pro Verkauf */
+        SERIAL,
         /** deliveryData wird als Text per DM geschickt */
         TEXT,
         /** deliveryData = Datei-URL/Download-Link, wird per DM geschickt */

@@ -70,7 +70,7 @@ public class PlanApiController {
         return result;
     }
 
-    /** Verfügbare Zahlungsmethoden für den Plan-Kauf: Karte immer, Coins nur mit hinterlegter Plattform-Wallet. */
+    /** Verfügbare Zahlungsmethoden für den Plan-Kauf: Karte immer, Coins + PayPal nur mit hinterlegter Plattform-Adresse. */
     @GetMapping("/api/my/plan/payment-methods")
     public Map<String, Object> planPaymentMethods() {
         List<String> coins = com.shop.payment.CryptoWallets.SYMBOLS.stream()
@@ -79,7 +79,8 @@ public class PlanApiController {
                     return wallet != null && !wallet.isBlank();
                 })
                 .toList();
-        return Map.of("card", true, "coins", coins);
+        boolean paypal = !settings.get(com.shop.payment.PayPalFriendsProvider.SITE_KEY, "").isBlank();
+        return Map.of("card", true, "paypal", paypal, "coins", coins);
     }
 
     /** Startet den Kauf eines Plans für den eingeloggten Nutzer — liefert eine orderId, die wie eine normale Bestellung bezahlt wird. */

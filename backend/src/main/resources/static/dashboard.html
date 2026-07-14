@@ -171,6 +171,18 @@
         <!-- ===== Customers ===== -->
         <section id="section-customers" class="section" hidden>
             <h2>Customers</h2>
+
+            <div class="panel">
+                <div class="panel-head">
+                    <h3><span data-icon="message-square"></span> DM Broadcast</h3>
+                    <span class="provider-badge" id="broadcastCount">—</span>
+                </div>
+                <p class="muted" style="margin-bottom:14px">Send a Discord DM to <b>all your customers</b> at once — announcements, restocks or discount drops. Guests and banned users are skipped.</p>
+                <label>Title (optional) <input class="input" id="bcTitle" maxlength="240" placeholder="e.g. 🎉 New stock just dropped"></label>
+                <label style="margin-top:10px">Message <textarea class="input" id="bcMessage" rows="4" maxlength="3800" placeholder="Write your announcement…"></textarea></label>
+                <button class="btn btn-primary" id="bcSendBtn" style="margin-top:12px"><span data-icon="send"></span> Send broadcast</button>
+            </div>
+
             <div class="panel">
                 <table class="table" id="customersTable">
                     <thead><tr><th></th><th>Name</th><th>Discord ID</th><th>Orders</th><th>Total Spent</th><th>Last Login</th><th>Status</th><th></th></tr></thead>
@@ -287,6 +299,7 @@
                     <button class="settings-nav-item" data-tab="payments"><span data-icon="credit-card"></span> Payments</button>
                     <button class="settings-nav-item" data-tab="delivery"><span data-icon="mail"></span> Delivery</button>
                     <button class="settings-nav-item" data-tab="coupons"><span data-icon="tag"></span> Coupons</button>
+                    <button class="settings-nav-item" data-tab="reviews"><span data-icon="message-square"></span> Reviews</button>
                     <button class="settings-nav-item" data-tab="mybranding"><span data-icon="edit-2"></span> Shop Branding</button>
                     <button class="settings-nav-item admin-only" data-tab="branding"><span data-icon="edit-2"></span> Site Branding</button>
                     <button class="settings-nav-item admin-only" data-tab="logs"><span data-icon="file-text"></span> Logs</button>
@@ -375,6 +388,28 @@
                         </div>
                         <div class="panel">
                             <div class="panel-head">
+                                <h3><span data-icon="credit-card"></span> PayPal (Friends &amp; Family)</h3>
+                                <span class="provider-badge" id="pmPaypalBadge">Setup required</span>
+                            </div>
+                            <p class="muted" style="margin-bottom:14px">Buyers send the total straight to your PayPal as <b>Friends &amp; Family</b> — no fees. Each buyer gets a unique amount (+0.01 steps) plus a note word, so payments are matched automatically.</p>
+                            <label>PayPal address — use your <b>primary</b> PayPal email <input class="input" id="myPaypalEmail" type="email" placeholder="you@example.com" autocomplete="off"></label>
+                            <small class="muted">Must match your primary PayPal email exactly — payments are matched by this address.</small>
+                            <div><button class="btn btn-primary" id="savePaypalBtn" style="margin-top:10px">Save</button></div>
+
+                            <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px">
+                                <b>⚡ Automatic delivery via PayPal IPN</b>
+                                <p class="muted" style="margin:6px 0 10px">Turn on Instant Payment Notifications and paid orders deliver <b>automatically within seconds</b> — no manual clicking:</p>
+                                <ol class="muted" style="margin:0 0 10px 18px;line-height:1.7">
+                                    <li>Open <a href="https://www.paypal.com/merchantnotification/ipn/preference/edit" target="_blank" rel="noopener">PayPal → IPN preferences</a>.</li>
+                                    <li>Paste this <b>Notification URL</b> and choose <b>“Receive IPN messages (Enabled)”</b> → Save:</li>
+                                </ol>
+                                <div class="pay-address" id="ipnUrlBox" title="Click to copy"
+                                     onclick="navigator.clipboard.writeText(this.textContent.trim()).then(() => toast('IPN URL copied'))">—</div>
+                                <p class="muted" style="margin-top:10px">Until IPN is set up, confirm PayPal orders manually with the <b>Paid</b> button in Orders.</p>
+                            </div>
+                        </div>
+                        <div class="panel">
+                            <div class="panel-head">
                                 <h3><span data-icon="message-square"></span> Sale Logs</h3>
                                 <span class="provider-badge" id="pmWebhookBadge">Setup required</span>
                             </div>
@@ -396,6 +431,11 @@
                                 <label class="grow">Receipt email <input class="input" id="pgEmail" type="email" placeholder="shop@example.com"></label>
                             </div>
                             <button class="btn btn-primary btn-sm" id="pgSaveBtn" type="button" style="margin-top:8px">Save PayGate</button>
+                            <div class="row" style="margin-top:18px">
+                                <label class="grow">Site PayPal (Friends &amp; Family) <input class="input" id="sPaypalFfEmail" type="email" placeholder="shop@example.com"></label>
+                            </div>
+                            <small class="muted">Fallback for sellers without their own PayPal and for <b>plan purchases</b>. Enable IPN on this PayPal account (Notification URL <code>&lt;your-url&gt;/api/webhook/paypal</code>) for automatic delivery.</small>
+                            <div style="margin-top:10px"><button class="btn btn-primary btn-sm" id="sitePaypalSaveBtn" type="button">Save Site PayPal</button></div>
                             <div class="row" style="margin-top:18px">
                                 <label class="grow">Stripe secret key <input class="input" id="sStripeSecret" type="password" placeholder="sk_live_… (leave empty to keep current)"></label>
                                 <label class="grow">Stripe webhook secret <input class="input" id="sStripeWebhookSecret" type="password" placeholder="whsec_… (leave empty to keep current)"></label>
@@ -451,6 +491,22 @@
 
                     <!-- Delivery-Editor wird zur Laufzeit hierher verschoben -->
                     <div id="settingsTabDelivery" hidden></div>
+
+                    <div id="settingsTabReviews" hidden>
+                        <div class="panel">
+                            <div class="panel-head">
+                                <h3><span data-icon="message-square"></span> Reviews</h3>
+                                <span class="plan-lock">PRO</span>
+                            </div>
+                            <p class="muted" style="margin-bottom:14px">Collect star ratings from buyers. After a purchase the bot DMs the buyer with rating buttons, and each review is posted to a Discord channel of your choice.</p>
+                            <label class="checkbox" style="margin-bottom:16px"><input type="checkbox" id="rvPromptEnabled" checked> Ask buyers to rate automatically after every purchase</label>
+                            <label>Review channel ID
+                                <input class="input" id="rvChannelId" placeholder="e.g. 123456789012345678" inputmode="numeric">
+                            </label>
+                            <small class="muted">Discord → Developer Mode on → right-click the channel → <b>Copy Channel ID</b>. Leave empty to use the site default. Reviews are posted to this channel on the product's server.</small>
+                            <div style="margin-top:14px"><button class="btn btn-primary" id="rvSaveBtn">Save</button></div>
+                        </div>
+                    </div>
 
                     <div id="settingsTabMyBranding" hidden>
                         <div class="panel">
@@ -617,6 +673,7 @@
                     <select class="input" id="pDeliveryType">
                         <option value="TEXT">Text via DM</option>
                         <option value="KEY">License key from pool</option>
+                        <option value="SERIAL">Account / Serial (email:pass) from pool</option>
                         <option value="ROLE">Discord role</option>
                         <option value="FILE">Download link</option>
                     </select>
@@ -635,7 +692,7 @@
                     <button type="button" class="btn btn-ghost" id="uploadImageBtn"><span data-icon="upload"></span> Upload</button>
                 </div>
             </label>
-            <label id="keysField" hidden>New keys (one per line or comma-separated)
+            <label id="keysField" hidden><span id="keysFieldLabel">License keys (one per line)</span>
                 <textarea class="input" id="pKeys" rows="3" placeholder="KEY-AAAA-1111&#10;KEY-BBBB-2222"></textarea>
             </label>
             <label class="checkbox"><input type="checkbox" id="pActive" checked> Active (visible in shop)</label>

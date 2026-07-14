@@ -39,12 +39,29 @@ public class ShopUser {
     private String paygateEmail;
     private String paygateCheckoutProvider;
 
+    /**
+     * PayPal-Adresse für "Friends & Family"-Zahlungen. Käufer überweisen direkt hierhin; per
+     * PayPal IPN (auf diese Primär-Adresse eingerichtet) werden Eingänge automatisch erkannt.
+     */
+    private String paypalFfEmail;
+
     /** Eigene Krypto-Wallet-Adressen (eine pro Zeile, z. B. "BTC: bc1..."). */
     @jakarta.persistence.Column(columnDefinition = "text")
     private String cryptoWallets;
 
     /** Discord-Webhook für Verkaufs-Logs dieses Verkäufers. */
     private String logWebhookUrl;
+
+    /** Channel-ID, in die Bewertungen dieses Verkäufers gepostet werden (Fallback: Site-Setting). */
+    private String reviewChannelId;
+
+    /**
+     * Käufer nach dem Kauf automatisch per DM zum Bewerten einladen (Standard: an).
+     * columnDefinition mit Default, damit die Spalte auch bei bestehenden Zeilen ohne NULL-Fehler
+     * hinzugefügt werden kann (H2 + Postgres).
+     */
+    @jakarta.persistence.Column(columnDefinition = "boolean default true")
+    private boolean reviewPromptEnabled = true;
 
     /** Eigener Titel + Nachricht für die Liefer-DM (leer = Standard). */
     private String deliveryTitle;

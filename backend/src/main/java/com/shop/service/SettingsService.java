@@ -29,6 +29,8 @@ public class SettingsService {
             "walletBTC", "walletETH", "walletLTC", "walletSOL", "walletUSDT", "walletUSDC",
             "walletDOGE", "walletXRP", "walletBCH", "walletTRX",
             "paygateWallet", "paygateCheckoutProvider", "paygateEmail",
+            // PayPal Friends & Family — Site-weite Fallback-Adresse (Plattform-Produkte / Plan-Käufe)
+            "paypalFfEmail",
             // Discord-Channels + Logging, direkt über das Dashboard steuerbar
             "logChannelId", "reviewChannelId", "logSales", "logErrors", "logOrders", "siteLogWebhookUrl",
             // Stripe (Karte) — Site-weit

@@ -11,14 +11,17 @@ import com.shop.repo.ProductRepo;
 import com.shop.repo.ShopUserRepo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.UserSnowflake;
+import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.awt.Color;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -46,7 +49,8 @@ public class DeliveryService {
         }
         String message = switch (product.getDeliveryType()) {
             case ROLE -> deliverRole(order, product);
-            case KEY -> deliverKeys(order, product);
+            case KEY -> deliverFromPool(order, product, "key", "🔑");
+            case SERIAL -> deliverFromPool(order, product, "account", "👤");
             case TEXT -> product.getDeliveryData() != null ? product.getDeliveryData()
                     : "Thank you for your purchase!";
             case FILE -> "📁 Your download: " + product.getDeliveryData();
@@ -73,8 +77,12 @@ public class DeliveryService {
         }
     }
 
-    private String deliverKeys(Order order, Product product) {
-        List<String> keys = new ArrayList<>();
+    /**
+     * Liefert {@code order.quantity} Zeilen aus dem Pool des Produkts (KEY = Lizenzkeys,
+     * SERIAL = Accounts wie "email:pass"). {@code noun} = "key"/"account" fürs Wording.
+     */
+    private String deliverFromPool(Order order, Product product, String noun, String emoji) {
+        List<String> items = new ArrayList<>();
         for (int i = 0; i < order.getQuantity(); i++) {
             var key = keyRepo.findFirstByProductIdAndUsedFalse(product.getId());
             if (key.isEmpty()) break;
@@ -82,21 +90,21 @@ public class DeliveryService {
             k.setUsed(true);
             k.setOrderId(order.getId());
             keyRepo.save(k);
-            keys.add(k.getKeyValue());
+            items.add(k.getKeyValue());
         }
-        if (keys.isEmpty()) {
-            return "⚠️ No keys left in stock. Please open a ticket (/ticket) — we'll take care of it right away.";
+        if (items.isEmpty()) {
+            return "⚠️ No " + noun + "s left in stock. Please open a ticket (/ticket) — we'll take care of it right away.";
         }
         StringBuilder sb = new StringBuilder();
-        // Eigene Liefer-Nachricht des Verkäufers zuerst — der Key kommt trotzdem immer mit
+        // Eigene Liefer-Nachricht des Verkäufers zuerst — das Item kommt trotzdem immer mit
         if (product.getDeliveryData() != null && !product.getDeliveryData().isBlank()) {
             sb.append(product.getDeliveryData()).append("\n\n");
         }
-        sb.append("🔑 Your key").append(keys.size() > 1 ? "s" : "").append(":\n");
-        keys.forEach(k -> sb.append("`").append(k).append("`\n"));
-        if (keys.size() < order.getQuantity()) {
-            sb.append("\n⚠️ Only ").append(keys.size()).append(" of ").append(order.getQuantity())
-              .append(" keys were available. Please open a ticket for the rest.");
+        sb.append(emoji).append(" Your ").append(noun).append(items.size() > 1 ? "s" : "").append(":\n");
+        items.forEach(k -> sb.append("`").append(k).append("`\n"));
+        if (items.size() < order.getQuantity()) {
+            sb.append("\n⚠️ Only ").append(items.size()).append(" of ").append(order.getQuantity())
+              .append(" ").append(noun).append("s were available. Please open a ticket for the rest.");
         }
         return sb.toString();
     }
@@ -114,6 +122,25 @@ public class DeliveryService {
         return "🚀 Your dashboard has been upgraded to **" + planService.tier(tierId).name()
                 + "** for " + (days >= 365 ? "1 year" : "1 month")
                 + ". Refresh the dashboard to see your new limits.";
+    }
+
+    /**
+     * Lädt den Käufer nach dem Kauf per DM zum Bewerten ein: eine Nachricht mit 5 Sterne-Buttons
+     * ({@code rate:<orderId>:<stars>}). Der Klick öffnet in {@code ShopCommands} ein Kommentar-Modal.
+     */
+    public void sendReviewPrompt(String buyerId, long orderId, String productName) {
+        if (!jda.isReady()) return;
+        MessageEmbed embed = new EmbedBuilder()
+                .setTitle("⭐ How was your purchase?")
+                .setDescription("Tap a rating for **" + productName + "** — it only takes a second and helps the shop a lot!")
+                .setColor(new Color(0xF5B301))
+                .build();
+        List<Button> stars = new ArrayList<>();
+        for (int n = 1; n <= 5; n++) stars.add(Button.secondary("rate:" + orderId + ":" + n, n + "★"));
+        jda.get().retrieveUserById(buyerId)
+                .flatMap(User::openPrivateChannel)
+                .flatMap(ch -> ch.sendMessageEmbeds(embed).setActionRow(stars))
+                .queue(ok -> {}, err -> log.warn("Review prompt to {} failed: {}", buyerId, err.getMessage()));
     }
 
     /** Schickt einem Nutzer eine DM (best effort — DMs können deaktiviert sein). */

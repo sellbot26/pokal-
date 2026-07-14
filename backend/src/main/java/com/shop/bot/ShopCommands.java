@@ -26,12 +26,16 @@ import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.Command;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.interactions.components.selections.StringSelectMenu;
+import net.dv8tion.jda.api.interactions.components.text.TextInput;
+import net.dv8tion.jda.api.interactions.components.text.TextInputStyle;
+import net.dv8tion.jda.api.interactions.modals.Modal;
 import net.dv8tion.jda.api.utils.FileUpload;
 import org.springframework.stereotype.Component;
 
@@ -59,12 +63,14 @@ public class ShopCommands extends ListenerAdapter {
     private final OrderService orderService;
     private final PaymentService paymentService;
     private final PayGateProvider payGate;
+    private final com.shop.payment.PayPalFriendsProvider payPal;
     private final QrService qrService;
     private final EmbedFactory embeds;
     private final BotLogService botLog;
     private final ShopProperties props;
     private final SettingsService settings;
     private final PlanService planService;
+    private final MemberJoinListener autoRole;
 
     /** true = Aktion blockiert, Antwort wurde bereits gesendet. */
     private boolean maintenanceBlocked(net.dv8tion.jda.api.interactions.callbacks.IReplyCallback event) {
@@ -78,6 +84,8 @@ public class ShopCommands extends ListenerAdapter {
 
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
+        // Auto-Role-Fallback: greift auch ohne "Server Members Intent" bei jeder Interaktion
+        autoRole.ensureAutoRole(event.getMember());
         try {
             switch (event.getName()) {
                 case "shop" -> handleShop(event);
@@ -175,10 +183,13 @@ public class ShopCommands extends ListenerAdapter {
                 .create("buy:cur:" + product.getId() + ":" + quantity + ":" + encodedCode)
                 .setPlaceholder("Choose a payment method…");
         PaymentService.CURRENCIES.keySet().forEach(c -> menu.addOption(c, c, "Crypto payment"));
-        // Karten-Option, wenn der Verkäufer (oder die Site) eine PayGate-Wallet hat
+        // Zahlungsmethoden-Optionen basierend auf Konfiguration des Verkäufers
         var merchant = product.getOwnerId() == null ? null : userRepo.findById(product.getOwnerId()).orElse(null);
         if (payGate.isConfiguredFor(merchant)) {
             menu.addOption("💳 Card / Apple Pay", PaymentService.CARD, "Card payment via PayGate");
+        }
+        if (payPal.isConfiguredFor(merchant)) {
+            menu.addOption("💸 PayPal (Friends & Family)", PaymentService.PAYPAL, "Send directly via PayPal F&F");
         }
 
         event.replyEmbeds(eb.build()).addActionRow(menu.build()).setEphemeral(true).queue();
@@ -263,7 +274,7 @@ public class ShopCommands extends ListenerAdapter {
 
         // Wenn im Dashboard ein Bewertungs-Channel gesetzt ist, dorthin posten (zentrale Social-Proof-Wall),
         // sonst öffentlich in den aktuellen Channel.
-        String reviewChannelId = settings.reviewChannelId();
+        String reviewChannelId = resolveReviewChannelId(product);
         var reviewChannel = reviewChannelId == null || reviewChannelId.isBlank()
                 ? null : event.getGuild().getTextChannelById(reviewChannelId.trim());
         if (reviewChannel != null) {
@@ -324,6 +335,7 @@ public class ShopCommands extends ListenerAdapter {
 
     @Override
     public void onStringSelectInteraction(StringSelectInteractionEvent event) {
+        autoRole.ensureAutoRole(event.getMember());
         String id = event.getComponentId();
         try {
             if (id.equals("shop:cat")) {
@@ -396,13 +408,22 @@ public class ShopCommands extends ListenerAdapter {
                     productId, quantity, discount);
             Payment payment = paymentService.createPayment(order, currency);
 
-            if (PaymentService.CARD.equals(currency)) {
-                // Kartenzahlung: Checkout-Link statt Krypto-Adresse + QR
+            boolean cardLike = PaymentService.CARD.equals(currency);
+            boolean paypal = PaymentService.PAYPAL.equals(currency);
+            if (cardLike) {
+                // Karte: Checkout-Link (keine Krypto-Adresse + QR)
                 MessageEmbed embed = cardPaymentEmbed(order);
                 Button payButton = Button.link(payment.getPayAddress(), "💳 Pay Now");
                 event.getHook().sendMessageEmbeds(embed).setActionRow(payButton).queue();
                 event.getUser().openPrivateChannel()
                         .flatMap(ch -> ch.sendMessageEmbeds(embed).setActionRow(payButton))
+                        .queue(ok -> {}, err -> {});
+            } else if (paypal) {
+                // PayPal F&F: PayPal-Adresse + Betrag (kein QR), manuelle Bestätigung durch den Verkäufer
+                MessageEmbed embed = paypalPaymentEmbed(order, payment);
+                event.getHook().sendMessageEmbeds(embed).queue();
+                event.getUser().openPrivateChannel()
+                        .flatMap(ch -> ch.sendMessageEmbeds(embed))
                         .queue(ok -> {}, err -> {});
             } else {
                 MessageEmbed embed = paymentEmbed(order, payment);
@@ -436,6 +457,7 @@ public class ShopCommands extends ListenerAdapter {
 
     @Override
     public void onButtonInteraction(ButtonInteractionEvent event) {
+        autoRole.ensureAutoRole(event.getMember());
         String id = event.getComponentId();
         try {
             if (id.startsWith("buy:start:")) {
@@ -452,6 +474,9 @@ public class ShopCommands extends ListenerAdapter {
                     event.reply("🔒 Closing ticket…").setEphemeral(true).queue();
                     event.getChannel().asTextChannel().delete().queueAfter(2, java.util.concurrent.TimeUnit.SECONDS);
                 }
+            } else if (id.startsWith("rate:")) {
+                String[] parts = id.split(":");
+                handleRateButton(event, Long.parseLong(parts[1]), Integer.parseInt(parts[2]));
             }
         } catch (Exception e) {
             log.error("Error in button {}", id, e);
@@ -461,6 +486,107 @@ public class ShopCommands extends ListenerAdapter {
                         .setEphemeral(true).queue();
             }
         }
+    }
+
+    /** Sterne-Button aus der Post-Kauf-DM geklickt → Kommentar-Modal öffnen. */
+    private void handleRateButton(ButtonInteractionEvent event, long orderId, int stars) {
+        Order order = orderRepo.findById(orderId).orElse(null);
+        if (order == null || !event.getUser().getId().equals(order.getUserId())) {
+            event.reply("This rating link isn't for you.").setEphemeral(true).queue();
+            return;
+        }
+        if (reviewRepo.findByUserIdAndProductId(order.getUserId(), order.getProductId()).isPresent()) {
+            event.reply("You've already reviewed this product — thank you! 💛").setEphemeral(true).queue();
+            return;
+        }
+        TextInput comment = TextInput.create("comment", "Your review (optional)", TextInputStyle.PARAGRAPH)
+                .setRequired(false)
+                .setMaxLength(1000)
+                .setPlaceholder("What did you think of your purchase?")
+                .build();
+        Modal modal = Modal.create("ratefb:" + orderId + ":" + stars, stars + "★ — leave a review")
+                .addActionRow(comment)
+                .build();
+        event.replyModal(modal).queue();
+    }
+
+    /** Kommentar-Modal abgeschickt → Bewertung speichern + (falls konfiguriert) in den Review-Channel posten. */
+    @Override
+    public void onModalInteraction(ModalInteractionEvent event) {
+        String id = event.getModalId();
+        if (!id.startsWith("ratefb:")) return;
+        try {
+            String[] parts = id.split(":");
+            long orderId = Long.parseLong(parts[1]);
+            int stars = Math.max(1, Math.min(5, Integer.parseInt(parts[2])));
+            Order order = orderRepo.findById(orderId).orElse(null);
+            if (order == null || !event.getUser().getId().equals(order.getUserId())) {
+                event.reply("Could not save your review.").setEphemeral(true).queue();
+                return;
+            }
+            Product product = productRepo.findById(order.getProductId()).orElse(null);
+            if (product == null) {
+                event.reply("This product no longer exists.").setEphemeral(true).queue();
+                return;
+            }
+            if (reviewRepo.findByUserIdAndProductId(order.getUserId(), product.getId()).isPresent()) {
+                event.reply("You've already reviewed this product — thank you! 💛").setEphemeral(true).queue();
+                return;
+            }
+            String text = event.getValue("comment") != null ? event.getValue("comment").getAsString() : null;
+            if (text != null && text.isBlank()) text = null;
+
+            Review review = new Review();
+            review.setGuildId(product.getGuildId());
+            review.setProductId(product.getId());
+            review.setProductName(product.getName());
+            review.setUserId(event.getUser().getId());
+            review.setUsername(event.getUser().getName());
+            review.setStars(stars);
+            review.setText(text);
+            reviewRepo.save(review);
+
+            postReviewToChannel(event, product, stars, text);
+
+            event.replyEmbeds(embeds.base()
+                    .setTitle("Thanks for your review! ⭐")
+                    .setDescription("Your **" + stars + "★** rating for **" + product.getName() + "** was saved.")
+                    .build()).setEphemeral(true).queue();
+        } catch (Exception e) {
+            log.error("Review modal {} failed", id, e);
+            if (!event.isAcknowledged()) {
+                event.reply("Something went wrong saving your review.").setEphemeral(true).queue();
+            }
+        }
+    }
+
+    /** Review-Channel des Verkäufers (falls gesetzt), sonst der Site-weite Fallback. */
+    private String resolveReviewChannelId(Product product) {
+        if (product != null && product.getOwnerId() != null) {
+            ShopUser owner = userRepo.findById(product.getOwnerId()).orElse(null);
+            if (owner != null && owner.getReviewChannelId() != null && !owner.getReviewChannelId().isBlank()) {
+                return owner.getReviewChannelId().trim();
+            }
+        }
+        return settings.reviewChannelId();
+    }
+
+    /** Postet die Bewertung in den konfigurierten Review-Channel des zugehörigen Servers. */
+    private void postReviewToChannel(ModalInteractionEvent event, Product product, int stars, String text) {
+        String reviewChannelId = resolveReviewChannelId(product);
+        if (reviewChannelId == null || reviewChannelId.isBlank() || product.getGuildId() == null) return;
+        Guild guild = event.getJDA().getGuildById(product.getGuildId());
+        if (guild == null) return;
+        var channel = guild.getTextChannelById(reviewChannelId.trim());
+        if (channel == null) return;
+        String starLine = "⭐".repeat(stars) + "▫".repeat(5 - stars);
+        EmbedBuilder eb = embeds.base()
+                .setTitle("Review — " + product.getName())
+                .setDescription("**" + starLine + "**  (" + stars + "/5)"
+                        + (text != null && !text.isBlank() ? "\n\n" + text : ""))
+                .setAuthor(event.getUser().getName() + " · verified buyer", null, event.getUser().getEffectiveAvatarUrl());
+        if (isValidImageUrl(product.getImageUrl())) eb.setThumbnail(product.getImageUrl());
+        channel.sendMessageEmbeds(eb.build()).queue();
     }
 
     // ===================== Autocomplete =====================
@@ -553,6 +679,22 @@ public class ShopCommands extends ListenerAdapter {
                 .addField("⏱ Valid for", props.getOrderExpiryMinutes() + " minutes", true)
                 .setImage("attachment://qr.png")
                 .build();
+    }
+
+    private MessageEmbed paypalPaymentEmbed(Order order, Payment payment) {
+        EmbedBuilder eb = embeds.base()
+                .setTitle("💸 PayPal Payment for Order #" + order.getId())
+                .setDescription("Send **exactly** the amount below as **PayPal Friends & Family** to the address.\n"
+                        + "⚠️ Choose **Friends & Family**, not Goods & Services.\n"
+                        + "Delivery is automatic once your payment arrives.")
+                .addField("Product", order.getProductName() + " x" + order.getQuantity(), true)
+                .addField("Amount", "`" + payment.getPayAmount().toPlainString() + " " + settings.currencySymbol() + "`", true)
+                .addField("PayPal address", "`" + payment.getPayAddress() + "`", false);
+        if (payment.getPayNote() != null && !payment.getPayNote().isBlank()) {
+            eb.addField("⚠️ Note (required!)", "Write **" + payment.getPayNote()
+                    + "** in the payment message — otherwise it can't be matched.", false);
+        }
+        return eb.build();
     }
 
     private MessageEmbed cardPaymentEmbed(Order order) {

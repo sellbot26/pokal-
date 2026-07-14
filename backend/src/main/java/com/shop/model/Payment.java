@@ -38,6 +38,9 @@ public class Payment {
     private String payAddress;
     private String txHash;
 
+    /** Pflicht-Notiz für PayPal F&F — der Käufer muss dieses Wort bei der Zahlung angeben. */
+    private String payNote;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Status status = Status.WAITING;

@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shop</title>
+    <link rel="icon" type="image/png" href="/img/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .shop-layout {
+            display: flex;
+            min-height: 100vh;
+            background: var(--bg-primary);
+        }
+        .shop-sidebar {
+            width: 280px;
+            border-right: 1px solid var(--border);
+            padding: 24px;
+            background: var(--bg-secondary);
+            overflow-y: auto;
+        }
+        .shop-content {
+            flex: 1;
+            padding: 32px;
+            overflow-y: auto;
+        }
+        .shop-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 32px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 16px;
+        }
+        .shop-logo { width: 40px; height: 40px; }
+        .shop-title { font-size: 24px; font-weight: 700; }
+        .category-btn {
+            display: block;
+            width: 100%;
+            text-align: left;
+            padding: 12px 16px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .category-btn:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+        .category-btn.active {
+            background: var(--accent);
+            color: white;
+        }
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 16px;
+        }
+        .product-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .product-card:hover {
+            border-color: var(--accent);
+            box-shadow: 0 8px 16px rgba(139, 149, 255, 0.2);
+        }
+        .product-image {
+            width: 100%;
+            height: 160px;
+            background: var(--bg-tertiary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+        }
+        .product-body {
+            padding: 16px;
+        }
+        .product-name {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+        .product-price {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 12px;
+        }
+        .product-btn {
+            width: 100%;
+            padding: 8px 16px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .product-btn:hover {
+            opacity: 0.9;
+        }
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+        }
+        .modal-backdrop:not([hidden]) {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-dialog {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 32px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 24px;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+        .payment-methods {
+            display: grid;
+            gap: 8px;
+            margin-top: 16px;
+        }
+        .pay-btn {
+            padding: 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s;
+        }
+        .pay-btn:hover {
+            background: var(--bg-primary);
+            border-color: var(--accent);
+        }
+        .pay-btn.active {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+        .pay-method-icon { display: inline-block; margin-right: 12px; font-size: 20px; }
+        .pay-method-text { font-weight: 600; font-size: 14px; }
+        .btn-primary {
+            width: 100%;
+            padding: 12px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 24px;
+        }
+        .muted { color: var(--text-secondary); font-size: 12px; }
+        .error { color: #ff6b6b; }
+
+        @media (max-width: 760px) {
+            .shop-layout { flex-direction: column; min-height: 0; }
+            .shop-sidebar {
+                width: 100%;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+                padding: 16px 18px;
+            }
+            #categoriesContainer { display: flex; flex-wrap: wrap; gap: 8px; }
+            .category-btn { width: auto; }
+            .shop-content { padding: 20px 16px; }
+            .product-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+            .product-image { height: 120px; font-size: 36px; }
+            .modal-dialog { padding: 22px; width: 92%; }
+        }
+    </style>
+</head>
+<body>
+<div class="shop-layout">
+    <!-- Sidebar -->
+    <aside class="shop-sidebar">
+        <div style="margin-bottom: 24px;">
+            <img src="/img/logo.png" alt="" style="width: 32px; height: 32px; margin-bottom: 8px;">
+            <div style="font-size: 18px; font-weight: 700;" id="brandName">Pokal</div>
+            <div class="muted">Store</div>
+        </div>
+        <div id="categoriesContainer"></div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="shop-content">
+        <div class="shop-header">
+            <h1 class="shop-title">Shop</h1>
+            <div class="muted" style="flex: 1;">Browse & buy</div>
+        </div>
+        <div id="productsContainer" class="product-grid"></div>
+        <div id="noProducts" class="muted" style="text-align: center; padding: 32px;">No products available</div>
+    </main>
+</div>
+
+<!-- Checkout Modal -->
+<div class="modal-backdrop" id="checkoutModal" hidden>
+    <div class="modal-dialog">
+        <div class="modal-title">Checkout</div>
+        <div class="form-group">
+            <label>Product</label>
+            <div style="padding: 12px; background: var(--bg-tertiary); border-radius: 6px; font-weight: 600;" id="checkoutProduct"></div>
+        </div>
+        <div class="form-group">
+            <label>Quantity</label>
+            <input class="input" type="number" id="checkoutQuantity" value="1" min="1" max="100">
+        </div>
+        <div class="form-group">
+            <label>Discount Code <span class="muted">(optional)</span></label>
+            <input class="input" type="text" id="checkoutCode" placeholder="Enter code">
+        </div>
+
+        <div style="margin-top: 24px;">
+            <label style="font-weight: 600; display: block; margin-bottom: 12px;">Payment Method</label>
+            <div class="payment-methods" id="paymentMethods"></div>
+        </div>
+
+        <button class="btn-primary" id="checkoutBtn">Continue to Payment</button>
+        <button class="btn-primary" style="background: var(--bg-tertiary); color: var(--text-primary); margin-top: 8px;" onclick="closeCheckout()">Cancel</button>
+    </div>
+</div>
+
+<!-- Payment Modal -->
+<div class="modal-backdrop" id="paymentModal" hidden>
+    <div class="modal-dialog">
+        <div class="modal-title">Payment Details</div>
+        <div id="paymentDetails"></div>
+        <button class="btn-primary" style="background: var(--bg-tertiary); color: var(--text-primary);" onclick="closePayment()">Close</button>
+    </div>
+</div>
+
+<script>
+const COINS = [
+    ['BTC', 'Bitcoin', 'bc1…'],
+    ['LTC', 'Litecoin', 'ltc1…'],
+    ['ETH', 'Ethereum', '0x…'],
+    ['SOL', 'Solana', '…'],
+    ['USDT', 'Tether (TRC20)', 'T…'],
+    ['USDC', 'USD Coin', '0x…'],
+];
+const COIN_LABEL = (symbol) => symbol === 'USDT' ? 'USDT-TRC20' : symbol;
+const EXPLORERS = {
+    'BTC': 'https://blockstream.info/tx/',
+    'LTC': 'https://blockchair.com/litecoin/transaction/',
+    'ETH': 'https://etherscan.io/tx/',
+    'SOL': 'https://solscan.io/tx/',
+    'USDT-TRC20': 'https://tronscan.org/#/transaction/',
+    'USDC': 'https://etherscan.io/tx/',
+};
+
+let products = [];
+let currentCategory = null;
+let selectedCurrency = null;
+let currentProduct = null;
+let payMethods = { card: false, paypal: false, coins: [] };
+
+async function loadProducts() {
+    try {
+        [products, payMethods] = await Promise.all([
+            fetch('/api/products').then(r => r.json()),
+            fetch('/api/checkout/payment-methods').then(r => r.json()).catch(() => ({ card: false, paypal: false, coins: [] }))
+        ]);
+        renderCategories();
+        renderProducts();
+    } catch (e) {
+        console.error('Failed to load products', e);
+    }
+}
+
+function renderCategories() {
+    const categories = [...new Set(products.map(p => p.category))].sort();
+    const container = document.getElementById('categoriesContainer');
+    container.innerHTML = categories.map(cat =>
+        `<button class="category-btn ${cat === currentCategory ? 'active' : ''}" onclick="filterCategory('${cat}')">${cat}</button>`
+    ).join('') + `<button class="category-btn ${currentCategory === null ? 'active' : ''}" onclick="filterCategory(null)">All Products</button>`;
+}
+
+function renderProducts() {
+    const filtered = currentCategory ? products.filter(p => p.category === currentCategory) : products;
+    const container = document.getElementById('productsContainer');
+    const noProducts = document.getElementById('noProducts');
+
+    if (!filtered.length) {
+        container.innerHTML = '';
+        noProducts.hidden = false;
+        return;
+    }
+
+    noProducts.hidden = true;
+    container.innerHTML = filtered.map(p => `
+        <div class="product-card" onclick="startCheckout(${p.id}, '${escHtml(p.name)}', '${p.price}')">
+            <div class="product-image">${p.imageUrl ? `<img src="${escHtml(p.imageUrl)}" style="width:100%;height:100%;object-fit:cover">` : '📦'}</div>
+            <div class="product-body">
+                <div class="product-name">${escHtml(p.name)}</div>
+                <div class="product-price">€${p.price}</div>
+                <button class="product-btn">Buy Now</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function filterCategory(cat) {
+    currentCategory = cat;
+    renderCategories();
+    renderProducts();
+}
+
+function startCheckout(productId, productName, price) {
+    currentProduct = { id: productId, name: productName, price: price };
+    document.getElementById('checkoutProduct').textContent = `${productName} · €${price}`;
+    document.getElementById('checkoutQuantity').value = '1';
+    document.getElementById('checkoutCode').value = '';
+    selectedCurrency = null;
+    renderPaymentMethods();
+    document.getElementById('checkoutModal').hidden = false;
+}
+
+function renderPaymentMethods() {
+    const container = document.getElementById('paymentMethods');
+    const methods = [];
+    if (payMethods.card) methods.push(['KARTE', '💳 Card / Apple Pay', 'Secure checkout via PayGate']);
+    if (payMethods.paypal) methods.push(['PAYPAL', '💸 PayPal (Friends &amp; Family)', 'Send directly, manual confirmation']);
+    (payMethods.coins || []).forEach(sym => {
+        const meta = COINS.find(c => c[0] === sym) || COINS.find(c => COIN_LABEL(c[0]) === sym);
+        const name = meta ? meta[1] : sym;
+        const label = meta ? meta[0] : sym;
+        methods.push([COIN_LABEL(label), `<b class="coin-tag">${label}</b> ${name}`, 'Auto-detected']);
+    });
+
+    if (!methods.length) {
+        container.innerHTML = `<div class="muted">No payment methods configured yet.</div>`;
+        return;
+    }
+    container.innerHTML = methods.map(([val, label, desc]) => `
+        <div class="pay-btn ${val === selectedCurrency ? 'active' : ''}" onclick="selectCurrency('${val}')">
+            <div class="pay-method-text">${label}</div>
+            <div class="muted">${desc}</div>
+        </div>
+    `).join('');
+}
+
+function selectCurrency(currency) {
+    selectedCurrency = currency;
+    renderPaymentMethods();
+}
+
+async function checkout() {
+    if (!selectedCurrency) {
+        alert('Please select a payment method');
+        return;
+    }
+
+    const quantity = parseInt(document.getElementById('checkoutQuantity').value) || 1;
+    const code = document.getElementById('checkoutCode').value.trim();
+
+    try {
+        document.getElementById('checkoutBtn').disabled = true;
+        const result = await fetch('/api/checkout/create-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                productId: currentProduct.id,
+                quantity: quantity,
+                discountCode: code || null,
+                currency: selectedCurrency
+            })
+        }).then(r => {
+            if (!r.ok) throw new Error('Checkout failed');
+            return r.json();
+        });
+
+        document.getElementById('checkoutModal').hidden = true;
+        showPayment(result);
+    } catch (e) {
+        alert('Error: ' + e.message);
+    } finally {
+        document.getElementById('checkoutBtn').disabled = false;
+    }
+}
+
+function showPayment(payment) {
+    const details = document.getElementById('paymentDetails');
+
+    if (payment.provider === 'paygate' || payment.provider === 'stripe') {
+        const label = payment.provider === 'stripe' ? 'Pay with Stripe' : 'Go to Card Payment';
+        details.innerHTML = `
+            <p class="muted">Pay securely by card, Apple Pay or Google Pay.</p>
+            <div style="font-size: 24px; font-weight: 700; margin: 24px 0; color: var(--accent);">€${payment.amount}</div>
+            <a class="btn-primary" href="${escHtml(payment.address)}" target="_blank" rel="noopener">${label}</a>`;
+    } else if (payment.provider === 'paypalff') {
+        details.innerHTML = `
+            <p class="muted">Send <b>exactly</b> this amount as <b>PayPal Friends &amp; Family</b> to the address below.<br>
+            ⚠️ Choose <b>Friends &amp; Family</b>, not Goods &amp; Services. Delivery is automatic once your payment arrives.</p>
+            <div style="font-size: 24px; font-weight: 700; margin: 24px 0; color: var(--accent);">€${escHtml(payment.amount)}</div>
+            <div style="padding: 12px; background: var(--bg-tertiary); border-radius: 6px; font-family: monospace; font-size: 14px; word-break: break-all; cursor: pointer;" title="Click to copy" onclick="copy(this.textContent.trim()); alert('Copied!')">
+                ${escHtml(payment.address)}
+            </div>
+            ${payment.note ? `<p class="muted" style="margin-top:14px">⚠️ Write this word in the payment note (required):</p>
+            <div style="padding: 12px; background: var(--bg-tertiary); border-radius: 6px; font-family: monospace; font-size: 16px; font-weight:700; cursor: pointer;" title="Click to copy" onclick="copy(this.textContent.trim()); alert('Copied!')">${escHtml(payment.note)}</div>` : ''}`;
+    } else {
+        details.innerHTML = `
+            <p class="muted">Send <b>exactly</b> this amount to the address below.</p>
+            <div style="font-size: 24px; font-weight: 700; margin: 24px 0; color: var(--accent);">${escHtml(payment.amount)} ${escHtml(payment.currency)}</div>
+            ${payment.qr ? `<img src="${payment.qr}" alt="QR" style="width: 200px; margin: 16px 0; display: block;">` : ''}
+            <div style="padding: 12px; background: var(--bg-tertiary); border-radius: 6px; font-family: monospace; font-size: 12px; word-break: break-all; cursor: pointer;" title="Click to copy" onclick="copy(this.textContent); alert('Copied!')">
+                ${escHtml(payment.address)}
+            </div>`;
+    }
+
+    document.getElementById('paymentModal').hidden = false;
+}
+
+function closeCheckout() {
+    document.getElementById('checkoutModal').hidden = true;
+}
+
+function closePayment() {
+    document.getElementById('paymentModal').hidden = true;
+}
+
+function escHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function copy(text) {
+    navigator.clipboard.writeText(text.trim());
+}
+
+// Initialize
+document.getElementById('checkoutBtn').addEventListener('click', checkout);
+loadProducts();
+</script>
+</body>
+</html>

@@ -36,7 +36,8 @@ public class ProductApiController {
     /** Produkte sind pro Discord-Server getrennt — guildId filtert, ohne Angabe kommt alles (Admin-Überblick). */
     @GetMapping("/api/products")
     public List<Product> list(Authentication auth, @RequestParam(required = false) String guildId) {
-        boolean admin = auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        // auth ist null für nicht eingeloggte Gäste (öffentlicher Web-Shop) — dann kein Admin.
+        boolean admin = auth != null && auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
         List<Product> products = admin ? productRepo.findAll() : productRepo.findByActiveTrueOrderByCategoryAscNameAsc();
         return products.stream()
                 // Interne Plan-Produkte gehören nicht in die normale Produktliste/den Discord-Shop
@@ -194,7 +195,8 @@ public class ProductApiController {
                 .map(String::trim).filter(s -> !s.isEmpty()).toList();
         keys.forEach(k -> keyRepo.save(new LicenseKey(p.getId(), k)));
         long available = keyRepo.countByProductIdAndUsedFalse(p.getId());
-        if (p.getDeliveryType() == Product.DeliveryType.KEY) {
+        // Pool-basierte Lieferarten (KEY/SERIAL) haben ihren Bestand = Anzahl freier Pool-Einträge
+        if (p.getDeliveryType() == Product.DeliveryType.KEY || p.getDeliveryType() == Product.DeliveryType.SERIAL) {
             p.setStock((int) available);
             productRepo.save(p);
         }

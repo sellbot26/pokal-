@@ -37,7 +37,6 @@
             </svg>
             Enter Panel
         </a>
-        <a class="btn btn-ghost btn-lg" href="#features">View features</a>
     </div>
     <div class="hero-trust">
         <span><i class="dot"></i> Automated delivery</span>
@@ -93,13 +92,69 @@
     </div>
 </div>
 
+<section class="section-wrap" id="how">
+    <div class="section-heading">
+        <span class="eyebrow">How it works</span>
+        <h2>Live in three steps</h2>
+        <p class="muted">From zero to your first automated sale in minutes — no code, no hassle.</p>
+    </div>
+    <div class="steps">
+        <div class="step">
+            <div class="step-num">1</div>
+            <h3>Connect Discord</h3>
+            <p>Sign in with Discord and add the bot to your server. Your dashboard is ready instantly.</p>
+        </div>
+        <div class="step">
+            <div class="step-num">2</div>
+            <h3>Add products &amp; embeds</h3>
+            <p>Create products with stock, keys or files, then drop a Buy embed into any channel.</p>
+        </div>
+        <div class="step">
+            <div class="step-num">3</div>
+            <h3>Get paid automatically</h3>
+            <p>Buyers pay by crypto, card or PayPal F&amp;F — delivery fires the second payment lands.</p>
+        </div>
+    </div>
+</section>
+
 <section class="section-wrap" id="features">
     <div class="section-heading">
         <span class="eyebrow">Platform</span>
         <h2>Everything your shop needs</h2>
         <p class="muted">Run the entire storefront from one dashboard — no code required.</p>
     </div>
+
+    <div class="feature-hero">
+        <div class="fh-text">
+            <span class="fh-eyebrow">Payments · Auto-delivery</span>
+            <h3>Get paid any way — delivered in seconds</h3>
+            <p>Accept crypto, card, Apple Pay and PayPal Friends &amp; Family. Every payment is detected automatically and the buyer's role, key, text or file is delivered instantly. No clicking, no waiting.</p>
+            <div class="fh-chips">
+                <span class="fh-chip">PayPal F&amp;F</span><span class="fh-chip">Card</span><span class="fh-chip">Apple Pay</span>
+                <span class="fh-chip">BTC</span><span class="fh-chip">ETH</span><span class="fh-chip">LTC</span>
+                <span class="fh-chip">USDT</span><span class="fh-chip">SOL</span><span class="fh-chip">+5 more</span>
+            </div>
+        </div>
+        <div class="fh-visual">
+            <div class="fh-row"><span>PayPal F&amp;F</span><span class="fh-tag">Delivered</span></div>
+            <div class="fh-row"><span>Bitcoin</span><span class="fh-tag">Delivered</span></div>
+            <div class="fh-row"><span>Card · Apple Pay</span><span class="fh-tag">Delivered</span></div>
+        </div>
+    </div>
+
     <div class="feature-grid" id="featureGrid"></div>
+
+    <div class="more-heading">Plus everything else, included</div>
+    <div class="more-list" id="moreList"></div>
+</section>
+
+<section class="section-wrap" style="padding-top:0">
+    <div class="lp-stats">
+        <div class="lp-stat"><b>13</b><span>Payment methods</span></div>
+        <div class="lp-stat"><b>Instant</b><span>Auto-delivery</span></div>
+        <div class="lp-stat"><b>0%</b><span>Fees on PayPal F&amp;F</span></div>
+        <div class="lp-stat"><b>No&nbsp;code</b><span>Fully white-label</span></div>
+    </div>
 </section>
 
 <section class="section-wrap" id="plans">
@@ -111,34 +166,40 @@
     <div class="plan-grid" id="planGrid"></div>
 </section>
 
+<section class="section-wrap">
+    <div class="cta-band">
+        <h2>Ready to automate your Discord shop?</h2>
+        <p class="muted">Start free — add products, post an embed and take your first payment today.</p>
+        <a class="btn btn-primary btn-lg" href="/oauth2/authorization/discord">Enter Panel</a>
+    </div>
+</section>
+
 <footer class="landing-footer">
     <div class="landing-brand"><img src="/img/logo.png" alt=""><span id="footerBrandName">Pokal</span></div>
     <div class="landing-footer-links" id="footerLinks"></div>
+    <nav class="landing-legal" aria-label="Legal">
+        <a href="/terms.html">Terms of Service</a>
+        <a href="/privacy.html">Privacy Policy</a>
+        <a href="/refund.html">Refund Policy</a>
+        <a href="/cookies.html">Cookie Policy</a>
+    </nav>
     <span class="muted" style="font-size:12px">&copy; <span id="footerYear"></span> <span id="footerBrandName2">Pokal</span></span>
 </footer>
 
 <script>
+document.addEventListener('DOMContentLoaded', () => {
     if (new URLSearchParams(location.search).has('error')) {
         document.getElementById('loginError').hidden = false;
     }
     document.getElementById('footerYear').textContent = new Date().getFullYear();
 
     const FEATURES = [
-        ['grid', 'Live Analytics', 'Revenue charts, order stats, monthly goals and top products updated in real time.'],
-        ['box', 'Product Manager', 'Full CRUD for products with images, categories and multiple delivery types.'],
-        ['archive', 'Stock & Keys', 'Track stock levels, get low/out-of-stock warnings and bulk-restock license keys instantly.'],
-        ['key', 'Flexible Delivery', 'Deliver a Discord role, a license key from a pool, plain text or a file/download link.'],
-        ['message-square', 'Embed Builder', 'Build Discord embeds with a live preview and attach working Buy buttons — no code.'],
-        ['dollar', 'Crypto Payments', 'Live BTC / ETH / LTC / SOL / USDT / USDC conversion with QR codes and auto-delivery.'],
-        ['credit-card', 'Card Payments', 'Card & Apple Pay checkout via PayGate, payouts straight to your USDC wallet.'],
-        ['file-text', 'Manual Payments', 'Log cash, PayPal or bank transfers by hand and keep every payment in one ledger.'],
-        ['tag', 'Coupons', 'Percentage discount codes with usage limits and expiry dates.'],
-        ['users', 'Customer Management', 'Order history, ban/unban and spending overview per customer.'],
-        ['server', 'Multi-Server', 'Run the bot across multiple Discord servers from a single dashboard.'],
-        ['message-square', 'Ticket System', 'One-click support ticket channels with role-based access, right from Discord.'],
-        ['download', 'CSV Export', 'Export orders and payments to CSV any time for bookkeeping or audits.'],
-        ['settings', 'Full White-Label', 'Your name, logo, accent color, currency and footer — branded top to bottom.'],
-        ['alert-triangle', 'Maintenance Mode', 'Pause checkouts instantly during restocks or downtime, no code required.']
+        ['box', 'Product Manager', 'Products with images, categories, variants and multiple delivery types — full control, no code.'],
+        ['archive', 'Stock & License Keys', 'Track stock, get low/out-of-stock warnings and bulk-restock license keys instantly.'],
+        ['message-square', 'Embed Builder', 'Design Discord embeds with a live preview and attach working Buy buttons in a click.'],
+        ['grid', 'Live Analytics', 'Revenue charts, order stats, monthly goals and top products — updated in real time.'],
+        ['server', 'Discord Bot & /shop', 'Buyers browse and check out right inside Discord with slash commands — no website needed.'],
+        ['users', 'Customer Management', 'Order history, ban / unban and a spending overview for every customer.']
     ];
     document.getElementById('featureGrid').innerHTML = FEATURES.map(([icon, title, desc]) => `
         <div class="feature-card">
@@ -146,6 +207,20 @@
             <h3>${title}</h3>
             <p class="muted">${desc}</p>
         </div>`).join('');
+
+    const MORE = [
+        'Flexible delivery — role, key, text or file',
+        'Discount coupons with limits & expiry',
+        'Reviews & vouches',
+        'Auto-role on join',
+        'Sale logs & Discord webhooks',
+        'Multi-server support',
+        'CSV export for bookkeeping',
+        'Full white-label branding',
+        'Maintenance mode'
+    ];
+    document.getElementById('moreList').innerHTML = MORE.map(item => `
+        <div class="more-item">${svgIcon('check-circle')}<span>${item}</span></div>`).join('');
 
     function money(value) {
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR' }).format(value ?? 0);
@@ -199,6 +274,7 @@
             document.getElementById('maintenanceInfo').hidden = false;
         }
     }).catch(() => {});
+});
 </script>
 <script>
 const ICON_PATHS = {
@@ -216,7 +292,11 @@ const ICON_PATHS = {
     'file-text': '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line>',
     'download': '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line>',
     'settings': '<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>',
-    'alert-triangle': '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>'
+    'alert-triangle': '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>',
+    'zap': '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>',
+    'star': '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>',
+    'user-plus': '<path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line>',
+    'bell': '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path>'
 };
 </script>
 </body>

@@ -51,9 +51,10 @@ public class BotService {
             log.warn("Bot-Start mit GUILD_MEMBERS-Intent fehlgeschlagen ({}). Auto-Role ist deaktiviert — "
                     + "aktiviere das 'Server Members Intent' im Discord Developer Portal. Starte ohne Intent…",
                     e.getMessage());
+            // Auto-Role läuft trotzdem — als Fallback bei jeder Bot-Interaktion (ohne Intent).
             jda = JDABuilder.createDefault(token)
                     .setActivity(Activity.watching(props.getBrandName()))
-                    .addEventListeners(shopCommands, adminCommands)
+                    .addEventListeners(shopCommands, adminCommands, memberJoinListener)
                     .build()
                     .awaitReady();
         }

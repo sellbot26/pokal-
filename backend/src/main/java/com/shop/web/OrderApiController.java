@@ -76,9 +76,12 @@ public class OrderApiController {
         result.put("currency", payment.getPayCurrency());
         result.put("amount", payment.getPayAmount());
         result.put("address", payment.getPayAddress());
+        result.put("note", payment.getPayNote());
         result.put("txHash", payment.getTxHash());
-        // Bei PayGate ist die "Adresse" ein Checkout-Link — QR nur für Krypto-Adressen
-        if (payment.getStatus() == Payment.Status.WAITING && !"paygate".equals(payment.getProvider())) {
+        // Bei PayGate ist die "Adresse" ein Checkout-Link, bei PayPal eine E-Mail — QR nur für Krypto
+        if (payment.getStatus() == Payment.Status.WAITING
+                && !"paygate".equals(payment.getProvider())
+                && !"paypalff".equals(payment.getProvider())) {
             result.put("qr", qrService.dataUrl(payment.getPayAddress()));
         }
         return result;

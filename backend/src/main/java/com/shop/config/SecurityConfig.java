@@ -31,12 +31,16 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(csrfRepo)
                         .csrfTokenRequestHandler(csrfHandler)
-                        // Webhooks werden per HMAC-Signatur verifiziert, nicht per CSRF-Token
-                        .ignoringRequestMatchers("/api/webhook/**"))
+                        // Webhooks (HMAC-verifiziert) + öffentlicher Gast-Checkout brauchen kein CSRF-Token
+                        .ignoringRequestMatchers("/api/webhook/**", "/api/checkout/**"))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/index.html", "/css/**", "/js/**", "/img/**", "/favicon.ico",
+                        .requestMatchers("/", "/index.html", "/shop.html",
+                                "/terms.html", "/privacy.html", "/refund.html", "/cookies.html",
+                                "/css/**", "/js/**", "/img/**", "/favicon.ico",
                                 "/uploads/**", "/login/**", "/oauth2/**", "/error",
-                                "/api/webhook/**", "/api/settings", "/api/plans").permitAll()
+                                "/api/webhook/**", "/api/settings", "/api/plans",
+                                // Öffentlicher Web-Shop (Gast-Checkout ohne Discord-Login)
+                                "/api/products", "/api/checkout/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .oauth2Login(oauth -> oauth

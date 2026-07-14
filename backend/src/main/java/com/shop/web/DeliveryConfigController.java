@@ -19,6 +19,7 @@ public class DeliveryConfigController {
 
     public record DeliveryRequest(String title, String message) {}
     public record BrandingRequest(String brandColor, String brandFooter) {}
+    public record ReviewRequest(String channelId, Boolean promptEnabled) {}
 
     private final ShopUserRepo userRepo;
     private final com.shop.service.PlanService planService;
@@ -44,6 +45,36 @@ public class DeliveryConfigController {
         if (req.message() != null) user.setDeliveryMessage(req.message().isBlank() ? null : req.message());
         userRepo.save(user);
         return get(principal);
+    }
+
+    // ===== Reviews: eigener Bewertungs-Channel + Post-Kauf-Prompt =====
+
+    @GetMapping("/api/my/review-config")
+    public Map<String, Object> getReviews(@AuthenticationPrincipal OAuth2User principal) {
+        ShopUser user = userRepo.findById(principal.<String>getAttribute("id")).orElseThrow();
+        return Map.of(
+                "channelId", user.getReviewChannelId() == null ? "" : user.getReviewChannelId(),
+                "promptEnabled", user.isReviewPromptEnabled()
+        );
+    }
+
+    @PutMapping("/api/my/review-config")
+    public Map<String, Object> updateReviews(@RequestBody ReviewRequest req, @AuthenticationPrincipal OAuth2User principal) {
+        String uid = principal.getAttribute("id");
+        ShopUser user = userRepo.findById(uid).orElseThrow();
+        if (!guildAccess.isSiteAdmin(uid) && !planService.isAtLeast(user, "PRO")) {
+            throw new IllegalStateException("The review system is a Pro feature. Upgrade your plan to collect reviews.");
+        }
+        if (req.channelId() != null) {
+            String c = req.channelId().trim();
+            if (!c.isEmpty() && !c.matches("\\d{5,25}")) {
+                throw new IllegalArgumentException("Channel ID must be a Discord ID (numbers only).");
+            }
+            user.setReviewChannelId(c.isEmpty() ? null : c);
+        }
+        if (req.promptEnabled() != null) user.setReviewPromptEnabled(req.promptEnabled());
+        userRepo.save(user);
+        return getReviews(principal);
     }
 
     // ===== Eigenes Branding (Business-Feature): Farbe + Footer der eigenen Liefer-DMs =====

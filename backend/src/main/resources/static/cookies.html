@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cookie Policy — Pokal</title>
+    <link rel="icon" type="image/png" href="/img/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="landing-body">
+
+<nav class="landing-nav">
+    <a class="landing-brand" href="/" style="text-decoration:none;color:inherit">
+        <img src="/img/logo.png" alt="" class="landing-logo-icon">
+        <span id="navBrandName">Pokal</span>
+    </a>
+    <a class="btn btn-primary" href="/oauth2/authorization/discord">Enter Panel</a>
+</nav>
+
+<main class="legal-wrap">
+    <div class="legal-head">
+        <h1>Cookie Policy</h1>
+        <div class="legal-updated">Last updated: 11 July 2026</div>
+    </div>
+
+    <div class="legal-toc">
+        <b>Contents</b>
+        <ol>
+            <li><a href="#what">What cookies are</a></li>
+            <li><a href="#why">Why we use cookies</a></li>
+            <li><a href="#types">Types of cookies we use</a></li>
+            <li><a href="#thirdparty">Third-party cookies</a></li>
+            <li><a href="#local">Local storage</a></li>
+            <li><a href="#manage">Managing cookies</a></li>
+            <li><a href="#consent">Consent</a></li>
+            <li><a href="#changes">Changes</a></li>
+            <li><a href="#contact">Contact</a></li>
+        </ol>
+    </div>
+
+    <div class="legal-body">
+        <p>This Cookie Policy explains how the Pokal platform (the "<strong>Service</strong>") uses cookies and similar
+        technologies. It should be read together with our <a href="/privacy.html">Privacy Policy</a>.</p>
+
+        <h2 id="what">1. What cookies are</h2>
+        <p>Cookies are small text files placed on your device when you visit a website. They let the site remember your
+        actions and preferences over time. Similar technologies such as local storage work in a comparable way. In this
+        policy we refer to all of these as "cookies".</p>
+
+        <h2 id="why">2. Why we use cookies</h2>
+        <p>We use cookies to keep you signed in, to keep the Service secure, to remember your preferences, and to
+        understand how the Service is used so we can improve it.</p>
+
+        <h2 id="types">3. Types of cookies we use</h2>
+        <h3>Strictly necessary cookies</h3>
+        <p>These are essential for the Service to function. They include the session cookie that keeps you authenticated
+        after you sign in with Discord and cookies used to protect against cross-site request forgery. Without these the
+        Service cannot work properly, and they cannot be switched off through our systems.</p>
+        <h3>Preference cookies</h3>
+        <p>These remember choices you make, such as your selected theme or interface settings, to give you a more
+        personalised experience.</p>
+        <h3>Analytics cookies (optional)</h3>
+        <p>Where enabled, these help us understand aggregate usage — such as which pages are visited — so we can improve
+        the Service. They are only set with your consent where required.</p>
+
+        <h2 id="thirdparty">4. Third-party cookies</h2>
+        <p>Some cookies may be set by third parties whose services we use, such as Discord (for authentication) and our
+        infrastructure or payment providers. These third parties process data under their own privacy and cookie
+        policies, which we encourage you to review.</p>
+
+        <h2 id="local">5. Local storage</h2>
+        <p>In addition to cookies, the Service may use your browser's local storage to hold non-sensitive settings (for
+        example UI preferences) so the dashboard loads the way you left it. You can clear local storage through your
+        browser settings.</p>
+
+        <h2 id="manage">6. Managing cookies</h2>
+        <p>You can control and delete cookies through your browser settings, including blocking or removing cookies
+        already stored. Most browsers let you refuse cookies or alert you when a cookie is being set. Please note that if
+        you block strictly necessary cookies, parts of the Service — including signing in — may stop working.</p>
+        <p>Helpful guides are available in the settings of the major browsers (Chrome, Firefox, Safari, Edge).</p>
+
+        <h2 id="consent">7. Consent</h2>
+        <p>Strictly necessary cookies are set on the basis of our legitimate interest in operating a functioning and
+        secure Service. Where required by law, optional cookies are only set after you give consent, which you can
+        withdraw at any time by adjusting your browser settings or any cookie controls we provide.</p>
+
+        <h2 id="changes">8. Changes</h2>
+        <p>We may update this Cookie Policy from time to time. We will update the "Last updated" date above when we do.</p>
+
+        <h2 id="contact">9. Contact</h2>
+        <p>Questions about our use of cookies can be sent to our support Discord server or by email at
+        <a href="mailto:privacy@pokal.shop">privacy@pokal.shop</a>.</p>
+
+        <div class="legal-note">
+            This document is provided as a general template for a digital-goods commerce platform. It is not legal advice.
+            Please have it reviewed by a qualified professional and adjust it to reflect the exact cookies and third-party
+            services you actually use before relying on it.
+        </div>
+
+        <a class="legal-back" href="/">← Back to home</a>
+    </div>
+</main>
+
+<footer class="landing-footer">
+    <div class="landing-brand"><img src="/img/logo.png" alt=""><span>Pokal</span></div>
+    <nav class="landing-legal" aria-label="Legal">
+        <a href="/terms.html">Terms of Service</a>
+        <a href="/privacy.html">Privacy Policy</a>
+        <a href="/refund.html">Refund Policy</a>
+        <a href="/cookies.html">Cookie Policy</a>
+    </nav>
+    <span class="muted" style="font-size:12px">&copy; <span id="footerYear"></span> Pokal</span>
+</footer>
+
+<script>
+    document.getElementById('footerYear').textContent = new Date().getFullYear();
+    fetch('/api/settings').then(r => r.ok ? r.json() : null).then(s => {
+        if (!s) return;
+        const name = s.shopName || 'Pokal';
+        document.title = 'Cookie Policy — ' + name;
+        document.querySelectorAll('#navBrandName, .landing-brand span').forEach(el => el.textContent = name);
+        if (s.brandColor && /^#[0-9a-fA-F]{6}$/.test(s.brandColor)) document.documentElement.style.setProperty('--accent', s.brandColor);
+        if (s.logoUrl) document.querySelectorAll('.landing-logo-icon, .landing-brand img').forEach(img => img.src = s.logoUrl);
+    }).catch(() => {});
+</script>
+</body>
+</html>

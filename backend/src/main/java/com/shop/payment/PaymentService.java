@@ -51,6 +51,9 @@ public class PaymentService {
     /** Pseudo-Währung für Kartenzahlung über Stripe Checkout. */
     public static final String STRIPE = "STRIPE";
 
+    /** Pseudo-Währung für PayPal "Friends & Family" (manuelle Bestätigung durch den Verkäufer). */
+    public static final String PAYPAL = "PAYPAL";
+
     /**
      * Feste Auszahlungs-Wallet (USDC · Polygon) für ALLE Plan-Käufe. Plan-Käufe laufen
      * ausschließlich über PayGate (Karte) auf genau diese Adresse — kein Krypto, keine
@@ -70,14 +73,20 @@ public class PaymentService {
     private final SettingsService settings;
     private final ObjectMapper mapper;
     private final com.shop.service.PlanService planService;
+    private final com.shop.repo.ReviewRepo reviewRepo;
+
+    /** Für die IPN-Rückvalidierung an PayPal (kein DI nötig). */
+    private final org.springframework.web.client.RestClient http =
+            org.springframework.web.client.RestClient.create();
 
     public PaymentService(List<PaymentProvider> providerList, PaymentRepo paymentRepo, OrderRepo orderRepo,
                           ProductRepo productRepo, ShopUserRepo userRepo,
                           DeliveryService deliveryService, BotLogService botLog, WebhookLogService webhookLog,
                           ShopProperties props, SettingsService settings, ObjectMapper mapper,
-                          com.shop.service.PlanService planService) {
+                          com.shop.service.PlanService planService, com.shop.repo.ReviewRepo reviewRepo) {
         this.providers = providerList.stream()
                 .collect(Collectors.toMap(PaymentProvider::name, Function.identity()));
+        this.reviewRepo = reviewRepo;
         this.paymentRepo = paymentRepo;
         this.orderRepo = orderRepo;
         this.productRepo = productRepo;
@@ -102,7 +111,8 @@ public class PaymentService {
     public Payment createPayment(Order order, String currencyLabel) {
         boolean card = CARD.equals(currencyLabel);
         boolean stripe = STRIPE.equals(currencyLabel);
-        String apiCode = stripe ? "card" : card ? "usdc" : CURRENCIES.get(currencyLabel);
+        boolean paypal = PAYPAL.equals(currencyLabel);
+        String apiCode = stripe ? "card" : card ? "usdc" : paypal ? "paypal" : CURRENCIES.get(currencyLabel);
         if (apiCode == null) throw new IllegalArgumentException("Unsupported currency: " + currencyLabel);
 
         var existing = paymentRepo.findByOrderId(order.getId());
@@ -112,11 +122,13 @@ public class PaymentService {
 
         // Provider-Wahl:
         //  - Stripe / Karte brauchen eine echte Checkout-URL → IMMER der echte Provider.
+        //  - PayPal F&F: Käufer zahlt direkt an die PayPal-Adresse, manuelle Bestätigung.
         //  - Krypto: DIRECT (Adresse + Kurs, auto-erkannt bzw. Ein-Klick-Bestätigung —
         //    funktioniert ohne jeden API-Key). Mock nur bei PAYMENT_PROVIDER=mock (lokales Testen).
         PaymentProvider chosen;
         if (stripe) chosen = requireProvider("stripe");
         else if (card) chosen = requireProvider("paygate");
+        else if (paypal) chosen = requireProvider("paypalff");
         else chosen = cryptoProvider();
         CreatedPayment created = chosen.create(order, apiCode, merchantFor(order));
         Payment payment = new Payment();
@@ -126,6 +138,7 @@ public class PaymentService {
         payment.setPayCurrency(currencyLabel);
         payment.setPayAmount(created.payAmount());
         payment.setPayAddress(created.payAddress());
+        payment.setPayNote(created.note()); // Pflicht-Notiz (nur PayPal F&F, sonst null)
         return paymentRepo.save(payment);
     }
 
@@ -165,6 +178,121 @@ public class PaymentService {
             throw new IllegalStateException("This payment is already " + payment.getStatus() + ".");
         }
         markFinished(payment, null);
+    }
+
+    /**
+     * Automatische Bestätigung einer PayPal-F&F-Zahlung durch den {@link com.shop.service.PayPalWatchService}:
+     * Die Transaction Search API hat eine passende, eingegangene Zahlung gefunden → Lieferung auslösen.
+     * Idempotent (doppelte Erkennung schadet nicht).
+     */
+    @Transactional
+    public void confirmPayPalPayment(long orderId, String txId) {
+        Payment payment = paymentRepo.findByOrderId(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("No payment for order #" + orderId));
+        if (!"paypalff".equals(payment.getProvider())) {
+            throw new IllegalStateException("Order #" + orderId + " is not a PayPal payment.");
+        }
+        if (payment.getStatus() != Payment.Status.WAITING) return; // schon bestätigt/geschlossen
+        log.info("PayPal payment for order #{} auto-confirmed (tx {})", orderId, txId);
+        markFinished(payment, txId);
+    }
+
+    /**
+     * Verarbeitet eine PayPal IPN (Instant Payment Notification). Der Rohtext wird zuerst gegen
+     * PayPal zurückvalidiert ({@code cmd=_notify-validate} → "VERIFIED"), erst dann verarbeitet —
+     * so werden gefälschte "bezahlt"-Meldungen abgewehrt (kein API-Key nötig). Zuordnung über
+     * Empfänger-Adresse + exakten (eindeutigen) Betrag + Währung. Passt alles, wird die Bestellung
+     * automatisch ausgeliefert.
+     */
+    @Transactional
+    public void handlePayPalIpn(String rawBody) {
+        if (rawBody == null || rawBody.isBlank()) return;
+        Map<String, String> ipn = parseForm(rawBody);
+        boolean sandbox = "1".equals(ipn.get("test_ipn"));
+
+        if (!verifyIpn(rawBody, sandbox)) {
+            botLog.error("🚨 IPN Rejected", "A PayPal IPN failed validation (not VERIFIED) and was ignored.");
+            throw new SecurityException("PayPal IPN could not be verified");
+        }
+
+        String status = ipn.getOrDefault("payment_status", "");
+        if (!"Completed".equalsIgnoreCase(status)) {
+            log.info("PayPal IPN ignored: payment_status={}", status);
+            return;
+        }
+
+        String receiver = firstNonBlank(ipn.get("receiver_email"), ipn.get("business"));
+        String currency = ipn.get("mc_currency");
+        String grossStr = ipn.get("mc_gross");
+        String txnId = ipn.get("txn_id");
+        if (receiver == null || grossStr == null) return;
+
+        java.math.BigDecimal gross;
+        try { gross = new java.math.BigDecimal(grossStr.trim()); }
+        catch (NumberFormatException e) { return; }
+
+        String shopCurrency = settings.get("currency", "EUR");
+        String rcv = receiver.trim();
+
+        // Passende offene PayPal-Zahlung: gleiche Empfänger-Adresse + exakter (eindeutiger) Betrag + Währung.
+        Payment match = paymentRepo.findAll().stream()
+                .filter(p -> p.getStatus() == Payment.Status.WAITING)
+                .filter(p -> "paypalff".equals(p.getProvider()))
+                .filter(p -> p.getPayAddress() != null && rcv.equalsIgnoreCase(p.getPayAddress().trim()))
+                .filter(p -> currency == null || currency.equalsIgnoreCase(shopCurrency))
+                .filter(p -> p.getPayAmount() != null && p.getPayAmount().compareTo(gross) == 0)
+                .findFirst().orElse(null);
+
+        if (match == null) {
+            log.info("PayPal IPN without matching order: {} {} to {} (txn {})", gross, currency, rcv, txnId);
+            return;
+        }
+        log.info("PayPal IPN matched order #{} (txn {})", match.getOrderId(), txnId);
+        confirmPayPalPayment(match.getOrderId(), txnId);
+    }
+
+    /** Rückvalidierung an PayPal: sendet den Rohtext mit vorangestelltem _notify-validate zurück. */
+    private boolean verifyIpn(String rawBody, boolean sandbox) {
+        String url = sandbox
+                ? "https://ipnpb.sandbox.paypal.com/cgi-bin/webscr"
+                : "https://ipnpb.paypal.com/cgi-bin/webscr";
+        try {
+            String resp = http.post()
+                    .uri(url)
+                    .header("User-Agent", "Pokal-IPN/1.0")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_FORM_URLENCODED)
+                    .body("cmd=_notify-validate&" + rawBody)
+                    .retrieve()
+                    .body(String.class);
+            return "VERIFIED".equals(resp == null ? "" : resp.trim());
+        } catch (Exception e) {
+            log.warn("PayPal IPN validation call failed: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /** application/x-www-form-urlencoded → Map (URL-dekodiert). */
+    private Map<String, String> parseForm(String body) {
+        Map<String, String> map = new java.util.HashMap<>();
+        for (String pair : body.split("&")) {
+            int eq = pair.indexOf('=');
+            if (eq < 0) continue;
+            String key = urlDecode(pair.substring(0, eq));
+            String value = urlDecode(pair.substring(eq + 1));
+            map.put(key, value);
+        }
+        return map;
+    }
+
+    private String urlDecode(String s) {
+        try { return java.net.URLDecoder.decode(s, java.nio.charset.StandardCharsets.UTF_8); }
+        catch (Exception e) { return s; }
+    }
+
+    private String firstNonBlank(String a, String b) {
+        if (a != null && !a.isBlank()) return a;
+        if (b != null && !b.isBlank()) return b;
+        return null;
     }
 
     /**
@@ -303,6 +431,33 @@ public class PaymentService {
         ShopUser merchant = merchantFor(order);
         if (merchant != null) {
             webhookLog.success(merchant.getLogWebhookUrl(), "💰 Sale Completed", saleSummary);
+        }
+
+        // Nach dem Kauf zum Bewerten einladen (Sterne-Buttons per DM)
+        maybePromptReview(order, seller);
+    }
+
+    /**
+     * Schickt dem Käufer nach der Lieferung die Bewertungs-DM — aber nur, wenn der Verkäufer das
+     * Review-Feature hat (Pro/Owner), es kein Plattform-/Plan-Produkt ist, der Käufer ein echter
+     * Discord-Nutzer ist und dieses Produkt noch nicht bewertet hat.
+     */
+    private void maybePromptReview(Order order, ShopUser seller) {
+        try {
+            String buyerId = order.getUserId();
+            if (buyerId == null || buyerId.startsWith("guest-")) return;
+            var product = productRepo.findById(order.getProductId()).orElse(null);
+            if (product == null) return;
+            if (com.shop.service.PlanService.PLATFORM_CATEGORY.equals(product.getCategory())) return;
+            boolean eligible = seller != null
+                    && (props.getDiscord().adminIdList().contains(seller.getId())
+                        || planService.isAtLeast(seller, "PRO"));
+            if (!eligible) return;
+            if (!seller.isReviewPromptEnabled()) return; // Verkäufer hat den Post-Kauf-Prompt deaktiviert
+            if (reviewRepo.findByUserIdAndProductId(buyerId, order.getProductId()).isPresent()) return;
+            deliveryService.sendReviewPrompt(buyerId, order.getId(), order.getProductName());
+        } catch (Exception e) {
+            log.warn("Review prompt for order #{} failed: {}", order.getId(), e.getMessage());
         }
     }
 

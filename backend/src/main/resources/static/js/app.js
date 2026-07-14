@@ -35,6 +35,9 @@ const COINS = [
 /** Symbol → Zahlungslabel der API (nur USDT weicht ab). */
 const COIN_LABEL = (symbol) => symbol === 'USDT' ? 'USDT-TRC20' : symbol;
 
+/** Pseudo-Währungen (Karte/PayPal) in einen lesbaren Namen übersetzen, Coins bleiben wie sie sind. */
+const PAY_LABEL = (cur) => cur === 'KARTE' ? 'Card' : cur === 'STRIPE' ? 'Card' : cur === 'PAYPAL' ? 'PayPal' : cur;
+
 const DATE = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' });
 
 const $ = (sel) => document.querySelector(sel);
@@ -546,14 +549,22 @@ async function loadProducts() {
 const DELIVERY_DATA_LABELS = {
     TEXT: 'Delivery text (sent via DM)',
     KEY: 'Custom message (optional — the key is always included)',
+    SERIAL: 'Custom message (optional — the account is always included)',
     ROLE: 'Role ID to assign',
     FILE: 'Download link (sent via DM)'
 };
 
+/** Pool-basierte Lieferarten: hier wird ein Vorrat (Keys / Accounts) eingepflegt. */
+const POOL_TYPES = ['KEY', 'SERIAL'];
+
 function applyDeliveryTypeUi() {
     const type = $('#pDeliveryType').value;
     $('#pDeliveryDataLabel').textContent = DELIVERY_DATA_LABELS[type] || 'Delivery data';
-    $('#keysField').hidden = type !== 'KEY';
+    const pool = POOL_TYPES.includes(type);
+    $('#keysField').hidden = !pool;
+    if ($('#keysFieldLabel')) $('#keysFieldLabel').textContent =
+        type === 'SERIAL' ? 'Accounts (one per line, e.g. email:pass)' : 'License keys (one per line)';
+    if ($('#pKeys')) $('#pKeys').placeholder = type === 'SERIAL' ? 'user@mail.com:password123' : 'XXXX-XXXX-XXXX';
 }
 
 function initProductForm() {
@@ -603,7 +614,7 @@ function initProductForm() {
                 ? await api(apiScope() + '/products/' + id, { method: 'PUT', body })
                 : await api(apiScope() + '/products', { method: 'POST', body });
             const keys = $('#pKeys').value.trim();
-            if (keys && body.deliveryType === 'KEY') {
+            if (keys && POOL_TYPES.includes(body.deliveryType)) {
                 await api(`${apiScope()}/products/${saved.id}/keys`, { method: 'POST', body: { keys } });
             }
             closeModals();
@@ -779,8 +790,10 @@ async function loadOrders() {
             const tx = o.txHash && EXPLORERS[o.payCurrency]
                 ? `<a href="${EXPLORERS[o.payCurrency]}${esc(o.txHash)}" target="_blank" rel="noopener">${icon('external-link', 'icon icon-sm')}</a>`
                 : (o.txHash ? `<span title="${esc(o.txHash)}">${icon('file-text', 'icon icon-sm')}</span>` : '—');
+            const paySub = o.payCurrency === 'KARTE' ? 'PayGate'
+                : o.payCurrency === 'PAYPAL' ? 'Friends &amp; Family' : (o.payAmount ?? '');
             const payment = o.payCurrency
-                ? `${o.payCurrency === 'KARTE' ? 'Card' : esc(o.payCurrency)}<br><small class="muted">${o.payCurrency === 'KARTE' ? 'PayGate' : (o.payAmount ?? '')}</small>` : '—';
+                ? `${esc(PAY_LABEL(o.payCurrency))}<br><small class="muted">${paySub}</small>` : '—';
             const actions = [];
             if (o.status === 'PENDING') {
                 if (o.paymentProvider === 'mock') {
@@ -873,6 +886,17 @@ function initPayments() {
         } catch (e) { toast(e.message, true); }
     });
 
+    $('#savePaypalBtn')?.addEventListener('click', async () => {
+        try {
+            const result = await api('/api/my/payment-config', {
+                method: 'PUT',
+                body: { paypalFfEmail: $('#myPaypalEmail').value }
+            });
+            applyMyPaymentConfig(result);
+            toast('PayPal address saved');
+        } catch (e) { toast(e.message, true); }
+    });
+
     $('#saveWebhookBtn')?.addEventListener('click', async () => {
         try {
             const result = await api('/api/my/payment-config', {
@@ -898,6 +922,8 @@ function initPayments() {
 function applyMyPaymentConfig(config) {
     $('#myPgWallet') && ($('#myPgWallet').value = config.paygateWallet || '');
     $('#myPgEmail') && ($('#myPgEmail').value = config.paygateEmail || '');
+    $('#myPaypalEmail') && ($('#myPaypalEmail').value = config.paypalFfEmail || '');
+    $('#ipnUrlBox') && (config.ipnUrl) && ($('#ipnUrlBox').textContent = config.ipnUrl);
     $('#myLogWebhook') && ($('#myLogWebhook').value = config.logWebhookUrl || '');
     const wallets = config.wallets || {};
     COINS.forEach(([symbol]) => {
@@ -905,6 +931,7 @@ function applyMyPaymentConfig(config) {
         if (input) input.value = wallets[symbol] || '';
     });
     setPaymentStatus('pmPaygateBadge', !!config.paygateConnected);
+    setPaymentStatus('pmPaypalBadge', !!config.paypalConnected);
     setPaymentStatus('pmCryptoBadge', !!config.cryptoConnected);
     setPaymentStatus('pmWebhookBadge', !!config.logWebhookUrl);
 }
@@ -918,6 +945,7 @@ async function loadPaymentSettings() {
         });
         $('#pgWallet') && ($('#pgWallet').value = settings.paygateWallet || '');
         $('#pgEmail') && ($('#pgEmail').value = settings.paygateEmail || '');
+        $('#sPaypalFfEmail') && ($('#sPaypalFfEmail').value = settings.paypalFfEmail || '');
     }
 }
 
@@ -926,6 +954,7 @@ async function loadPaymentSettings() {
 async function loadCustomers() {
     try {
         const customers = await api(me.admin ? '/api/admin/customers' : '/api/my/shop-customers');
+        setupBroadcast(customers.length);
         $('#customersTable tbody').innerHTML = customers.map(c => `
             <tr>
                 <td>${c.avatar ? `<img class="thumb" style="border-radius:50%" src="${esc(c.avatar)}" alt="">` : icon('users')}</td>
@@ -939,6 +968,29 @@ async function loadCustomers() {
                     ${c.banned ? 'Unban' : 'Ban'}</button>` : ''}</td>
             </tr>`).join('') || '<tr><td colspan="8" class="muted">No customers</td></tr>';
     } catch (e) { toast(e.message, true); }
+}
+
+/** DM-Broadcast: Empfängerzahl anzeigen + Send-Button (einmalig) verdrahten. */
+function setupBroadcast(recipientCount) {
+    const badge = $('#broadcastCount');
+    if (badge) badge.textContent = recipientCount + (recipientCount === 1 ? ' recipient' : ' recipients');
+    const btn = $('#bcSendBtn');
+    if (!btn || btn.dataset.wired) return;
+    btn.dataset.wired = '1';
+    btn.addEventListener('click', async () => {
+        const message = $('#bcMessage').value.trim();
+        if (!message) { toast('Write a message first.', true); return; }
+        if (!confirm(`Send this DM to ${recipientCount} customer${recipientCount === 1 ? '' : 's'}?`)) return;
+        btn.disabled = true;
+        try {
+            const path = me.admin ? '/api/admin/broadcast' : '/api/my/broadcast';
+            const res = await api(path, { method: 'POST', body: { title: $('#bcTitle').value, message } });
+            toast(`Broadcast sent to ${res.recipients} customer${res.recipients === 1 ? '' : 's'}`);
+            $('#bcTitle').value = '';
+            $('#bcMessage').value = '';
+        } catch (e) { toast(e.message, true); }
+        finally { btn.disabled = false; }
+    });
 }
 
 window.toggleBan = async (id, banned) => {
@@ -1259,6 +1311,9 @@ async function startPlanPurchase(tierId) {
     const buttons = [];
     if (methods.card) {
         buttons.push(`<button class="plan-pay-btn" data-paycur="KARTE">${icon('credit-card')}<span><b>Card / Apple Pay</b><small>Secure checkout</small></span></button>`);
+    }
+    if (methods.paypal) {
+        buttons.push(`<button class="plan-pay-btn" data-paycur="PAYPAL">${icon('credit-card')}<span><b>PayPal (Friends &amp; Family)</b><small>Manual confirmation</small></span></button>`);
     }
     (methods.coins || []).forEach(symbol => {
         const meta = COINS.find(c => c[0] === symbol);
@@ -1751,13 +1806,22 @@ function selectSettingsTab(name) {
     // Nur vorhandene Panels umschalten — für Nutzer sind die admin-only-Panels aus dem DOM entfernt
     const panels = { general: 'settingsTabGeneral', branding: 'settingsTabBranding',
         payments: 'settingsTabPayments', logs: 'settingsTabLogs',
-        delivery: 'settingsTabDelivery',
+        delivery: 'settingsTabDelivery', reviews: 'settingsTabReviews',
         coupons: 'settingsTabCoupons', mybranding: 'settingsTabMyBranding' };
     Object.entries(panels).forEach(([tab, id]) => { const el = $('#' + id); if (el) el.hidden = tab !== name; });
     if (name === 'coupons') loadDiscounts();
     if (name === 'payments') loadPaymentSettings();
     if (name === 'delivery') loadDelivery();
+    if (name === 'reviews') loadReviewConfig();
     if (name === 'mybranding') loadMyBranding();
+}
+
+async function loadReviewConfig() {
+    try {
+        const cfg = await api('/api/my/review-config');
+        $('#rvChannelId') && ($('#rvChannelId').value = cfg.channelId || '');
+        $('#rvPromptEnabled') && ($('#rvPromptEnabled').checked = cfg.promptEnabled !== false);
+    } catch (e) { /* optional */ }
 }
 
 async function loadMyBranding() {
@@ -1771,6 +1835,17 @@ async function loadMyBranding() {
 function initSettings() {
     $$('#settingsTabs .settings-nav-item').forEach(tab =>
         tab.addEventListener('click', () => selectSettingsTab(tab.dataset.tab)));
+
+    $('#rvSaveBtn')?.addEventListener('click', async () => {
+        try {
+            const cfg = await api('/api/my/review-config', {
+                method: 'PUT',
+                body: { channelId: $('#rvChannelId').value, promptEnabled: $('#rvPromptEnabled').checked }
+            });
+            $('#rvChannelId').value = cfg.channelId || '';
+            toast('Review settings saved');
+        } catch (e) { toast(e.message, true); }
+    });
 
     $('#settingsForm')?.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -1859,6 +1934,16 @@ function initSettings() {
                 }
             });
             toast('PayGate saved');
+        } catch (e) { toast(e.message, true); }
+    });
+
+    $('#sitePaypalSaveBtn')?.addEventListener('click', async () => {
+        try {
+            settings = await api('/api/admin/settings', {
+                method: 'PUT',
+                body: { paypalFfEmail: $('#sPaypalFfEmail').value.trim() }
+            });
+            toast('Site PayPal saved');
         } catch (e) { toast(e.message, true); }
     });
 
@@ -1987,7 +2072,7 @@ async function loadMyOrders() {
                 <div class="order-head"><b>#${o.id} — ${esc(o.productName)} x${o.quantity}</b>${badge(o.status)}</div>
                 <div class="order-meta">
                     ${DATE.format(new Date(o.createdAt))} • ${money(o.totalPrice)}
-                    ${o.payCurrency ? ' • ' + (o.payCurrency === 'KARTE' ? 'Card' : esc(o.payCurrency)) : ''}
+                    ${o.payCurrency ? ' • ' + esc(PAY_LABEL(o.payCurrency)) : ''}
                     ${o.discountPercent ? ` • -${o.discountPercent}%` : ''}
                 </div>
                 ${keys ? `<div style="margin-bottom:10px"><small class="muted">Your key${o.deliveredKeys.length > 1 ? 's' : ''} (click to copy):</small>${keys}</div>` : ''}
@@ -2007,6 +2092,18 @@ window.showPayment = async (orderId) => {
                 Delivery is automatic once the payment is confirmed.</p>
                 <div class="pay-amount">${money(payment.amount)}</div>
                 <a class="btn btn-primary" href="${esc(payment.address)}" target="_blank" rel="noopener">${label}</a>`;
+        } else if (payment.provider === 'paypalff') {
+            $('#paymentDetails').innerHTML = `
+                <p class="muted">Send <b>exactly</b> this amount as <b>PayPal Friends &amp; Family</b> to the address below.<br>
+                ⚠️ Choose <b>Friends &amp; Family</b>, not Goods &amp; Services. Delivery is automatic once your payment arrives.</p>
+                <div class="pay-amount">${money(payment.amount)}</div>
+                <div class="pay-address" title="Click to copy"
+                     onclick="navigator.clipboard.writeText(this.textContent.trim()).then(() => toast('Address copied'))">
+                    ${esc(payment.address)}
+                </div>
+                ${payment.note ? `<p class="muted" style="margin-top:12px">⚠️ Write this in the payment note (required):</p>
+                <div class="pay-address" title="Click to copy"
+                     onclick="navigator.clipboard.writeText(this.textContent.trim()).then(() => toast('Note copied'))">${esc(payment.note)}</div>` : ''}`;
         } else {
             $('#paymentDetails').innerHTML = `
                 <p class="muted">Send <b>exactly</b> this amount to the address below.<br>
