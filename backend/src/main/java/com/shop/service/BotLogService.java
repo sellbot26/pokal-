@@ -53,7 +53,9 @@ public class BotLogService {
         String channelId = settings.logChannelId();
         if (!jda.isReady() || channelId == null || channelId.isBlank()) return;
         try {
-            TextChannel channel = jda.get().getTextChannelById(channelId);
+            // GuildMessageChannel statt TextChannel — funktioniert auch mit Announcement-Channels
+            var channel = jda.get().getChannelById(
+                    net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel.class, channelId);
             if (channel == null) return;
             channel.sendMessageEmbeds(new EmbedBuilder()
                     .setTitle(title)

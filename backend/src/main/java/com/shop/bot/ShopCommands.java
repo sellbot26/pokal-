@@ -276,7 +276,8 @@ public class ShopCommands extends ListenerAdapter {
         // sonst öffentlich in den aktuellen Channel.
         String reviewChannelId = resolveReviewChannelId(product);
         var reviewChannel = reviewChannelId == null || reviewChannelId.isBlank()
-                ? null : event.getGuild().getTextChannelById(reviewChannelId.trim());
+                ? null : event.getGuild().getChannelById(
+                        net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel.class, reviewChannelId.trim());
         if (reviewChannel != null) {
             reviewChannel.sendMessageEmbeds(eb.build()).queue();
             event.replyEmbeds(embeds.base()
@@ -577,7 +578,8 @@ public class ShopCommands extends ListenerAdapter {
         if (reviewChannelId == null || reviewChannelId.isBlank() || product.getGuildId() == null) return;
         Guild guild = event.getJDA().getGuildById(product.getGuildId());
         if (guild == null) return;
-        var channel = guild.getTextChannelById(reviewChannelId.trim());
+        var channel = guild.getChannelById(
+                net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel.class, reviewChannelId.trim());
         if (channel == null) return;
         String starLine = "⭐".repeat(stars) + "▫".repeat(5 - stars);
         EmbedBuilder eb = embeds.base()

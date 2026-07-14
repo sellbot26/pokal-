@@ -1449,7 +1449,9 @@ function populateEmbedChannels() {
     const activeGuild = localStorage.getItem('activeGuildId') || '';
     const filtered = activeGuild ? channelsCache.filter(c => c.guildId === activeGuild) : channelsCache;
     $('#embedChannelSelect').innerHTML = '<option value="">Select channel…</option>'
-        + filtered.map(c => `<option value="${esc(c.id)}">#${esc(c.name)} (${esc(c.guild)})</option>`).join('');
+        + filtered.map(c => c.writable === 'false'
+            ? `<option value="${esc(c.id)}" disabled>#${esc(c.name)} (${esc(c.guild)}) — bot needs access</option>`
+            : `<option value="${esc(c.id)}">#${esc(c.name)} (${esc(c.guild)})</option>`).join('');
 }
 
 function collectEmbedData() {

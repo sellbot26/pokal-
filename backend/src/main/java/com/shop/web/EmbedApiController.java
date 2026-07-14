@@ -14,7 +14,7 @@ import lombok.RequiredArgsConstructor;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageEmbed;
-import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.requests.restaction.MessageCreateAction;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -274,7 +274,8 @@ public class EmbedApiController {
 
         JDA jda = jdaHolder.get();
         if (jda == null) throw new IllegalStateException("Bot ist nicht verbunden.");
-        TextChannel channel = jda.getTextChannelById(req.channelId().trim());
+        // GuildMessageChannel statt nur TextChannel — deckt auch Announcement-, Voice-Text- etc. ab
+        GuildMessageChannel channel = jda.getChannelById(GuildMessageChannel.class, req.channelId().trim());
         if (channel == null) throw new IllegalArgumentException("Channel nicht gefunden.");
         if (!channel.canTalk()) throw new IllegalStateException("Bot darf in diesem Channel nicht schreiben.");
         if (!siteAdmin && !guildAccess.manages(ownerId, channel.getGuild().getId())) {
@@ -317,13 +318,20 @@ public class EmbedApiController {
         List<Map<String, String>> result = new ArrayList<>();
         jda.getGuilds().forEach(guild -> {
             if (allowedGuilds != null && !allowedGuilds.contains(guild.getId())) return;
-            guild.getTextChannels().forEach(channel -> {
-                if (channel.canTalk()) {
+            // ALLE Message-Channels (Text, Announcement, Voice-Text, Stage), nicht nur TextChannels —
+            // in Server-Reihenfolge. Channels OHNE Schreibrecht werden mitgeliefert und im
+            // Dashboard ausgegraut, damit klar ist: Bot braucht dort noch Rechte.
+            guild.getChannels().forEach(gc -> {
+                if (gc instanceof GuildMessageChannel channel) {
+                    // Announcement-Channels markieren, damit man sie im Dropdown erkennt
+                    String name = channel.getName()
+                            + (gc.getType() == net.dv8tion.jda.api.entities.channel.ChannelType.NEWS ? " 📢" : "");
                     result.add(Map.of(
                             "id", channel.getId(),
-                            "name", channel.getName(),
+                            "name", name,
                             "guild", guild.getName(),
-                            "guildId", guild.getId()
+                            "guildId", guild.getId(),
+                            "writable", String.valueOf(channel.canTalk())
                     ));
                 }
             });
