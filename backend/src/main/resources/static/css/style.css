@@ -2053,3 +2053,18 @@ body { overflow-x: hidden; }
     .cta-band { padding: 36px 20px; }
     .cta-band h2 { font-size: 22px; }
 }
+
+/* ===== What's New / Changelog ===== */
+.notif-dot {
+    position: absolute; top: 6px; right: 6px;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent); box-shadow: 0 0 0 2px var(--bg);
+}
+.changelog-body { max-height: 55vh; overflow-y: auto; margin: 4px 0 8px; }
+.changelog-entry { padding: 12px 0; border-bottom: 1px solid var(--border); }
+.changelog-entry:last-child { border-bottom: none; }
+.changelog-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 6px; }
+.changelog-head .muted { font-size: 12px; white-space: nowrap; }
+.changelog-entry ul { margin: 0 0 0 18px; padding: 0; }
+.changelog-entry li { font-size: 13.5px; line-height: 1.65; color: var(--text-soft, inherit); }
+.changelog-entry li code { background: var(--panel-2, rgba(139,149,255,.12)); padding: 1px 5px; border-radius: 4px; font-size: 12px; }

@@ -212,6 +212,7 @@ async function init() {
     initRestockForm();
     initEmbedEditor();
     initTicketSection();
+    initChangelog();
     initGuildSwitcher();
     initLicenses();
     initChart();
@@ -1575,6 +1576,64 @@ function addButtonEditor(button = {}) {
         el.addEventListener('change', renderEmbedPreview);
     });
     $('#buttonsEditor').appendChild(wrap);
+}
+
+// ===== What's New / Changelog =====
+// Neuester Eintrag zuerst — beim ersten Dashboard-Besuch nach einem Update öffnet sich das Modal automatisch.
+
+const CHANGELOG = [
+    {
+        version: '2026-07-16',
+        title: '🎫 Ticket System & Auto-Role',
+        items: [
+            'New <b>Tickets</b> section: build your own ticket panel embed (title, text, color, images, button) with live preview',
+            'Per server: ticket category, support roles, <b>ticket limit per user</b>, channel prefix & support ping',
+            '<b>Transcripts</b>: closed tickets are saved as a text file to a channel — optionally DM\'d to the user',
+            'Auto-role now supports <code>serverId:roleId</code> pairs — one role per server',
+            'Welcome & setup message (incl. Terms of Service) when the bot joins a new server',
+            'Slash commands now register <b>instantly</b> on new servers',
+            '"Powered by Pokal" footer on all product embeds'
+        ]
+    },
+    {
+        version: '2026-07-12',
+        title: '💸 PayPal & Reviews',
+        items: [
+            '<b>PayPal Friends & Family</b> with automatic payment detection via IPN — no API key needed',
+            'New delivery type: <b>Serial/Account</b> (email:pass pools)',
+            '<b>DM broadcast</b> — message all your customers at once',
+            'Post-purchase <b>review DMs</b> with star rating + per-seller review settings'
+        ]
+    },
+    {
+        version: '2026-07-11',
+        title: '🪙 Payments Rework',
+        items: [
+            '<b>10 coins</b> with direct wallet payments — unique amount per order, no API keys',
+            'One <b>Payments</b> tab for all your payment methods',
+            'Maintenance mode + auto-role on server join'
+        ]
+    }
+];
+
+function initChangelog() {
+    $('#whatsNewBtn')?.addEventListener('click', openChangelog);
+    if (localStorage.getItem('changelogSeen') !== CHANGELOG[0].version) {
+        $('#whatsNewDot').hidden = false;
+        openChangelog();
+    }
+}
+
+function openChangelog() {
+    $('#changelogBody').innerHTML = CHANGELOG.map(entry => `
+        <div class="changelog-entry">
+            <div class="changelog-head"><b>${entry.title}</b><span class="muted">${esc(entry.version)}</span></div>
+            <ul>${entry.items.map(i => `<li>${i}</li>`).join('')}</ul>
+        </div>`).join('');
+    populateIcons();
+    $('#changelogModal').hidden = false;
+    localStorage.setItem('changelogSeen', CHANGELOG[0].version);
+    $('#whatsNewDot').hidden = true;
 }
 
 // ===== Ticket System =====

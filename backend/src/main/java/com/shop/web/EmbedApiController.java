@@ -290,7 +290,7 @@ public class EmbedApiController {
             if (actor != null && !planService.isAtLeast(actor, "PRO")
                     && data instanceof com.fasterxml.jackson.databind.node.ObjectNode obj) {
                 obj.put("color", settings.get("brandColor", "#8b95ff"));
-                obj.put("footer", settings.brandName());
+                obj.put("footer", "Powered by " + settings.brandName());
             }
         }
         MessageEmbed embed = renderer.render(data);

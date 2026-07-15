@@ -54,6 +54,7 @@
 
     <main class="main">
         <div class="topbar">
+            <button class="topbar-gear" id="whatsNewBtn" title="What's new" style="position:relative"><span data-icon="sparkles"></span><span class="notif-dot" id="whatsNewDot" hidden></span></button>
             <button class="topbar-gear" title="Settings" onclick="showSection('settings')"><span data-icon="settings"></span></button>
             <div class="topbar-user">
                 <div class="topbar-meta">
@@ -838,6 +839,17 @@
         <div class="plan-pay-methods" id="planPayMethods"></div>
         <div class="modal-actions">
             <button type="button" class="btn btn-ghost" data-close>Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- What's New / Changelog -->
+<div class="modal-backdrop" id="changelogModal" hidden>
+    <div class="modal">
+        <h3><span data-icon="sparkles"></span> What's New</h3>
+        <div class="changelog-body" id="changelogBody"></div>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-primary" data-close>Got it</button>
         </div>
     </div>
 </div>

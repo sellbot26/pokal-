@@ -637,6 +637,8 @@ public class ShopCommands extends ListenerAdapter {
 
     private MessageEmbed productEmbed(Product p) {
         EmbedBuilder eb = embeds.base()
+                // Fester Plattform-Footer auf allen Produkt-Embeds — nicht konfigurierbar
+                .setFooter("Powered by Pokal")
                 .setTitle("🛍️ " + p.getName())
                 .addField("Price", p.getPrice().toPlainString() + " " + settings.currencySymbol(), true)
                 .addField("Category", p.getCategory() == null || p.getCategory().isBlank() ? "Other" : p.getCategory(), true)
