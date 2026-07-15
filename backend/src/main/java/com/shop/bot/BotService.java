@@ -28,6 +28,7 @@ public class BotService {
     private final ShopCommands shopCommands;
     private final AdminCommands adminCommands;
     private final MemberJoinListener memberJoinListener;
+    private final GuildJoinListener guildJoinListener;
 
     @EventListener(ApplicationReadyEvent.class)
     public void start() throws InterruptedException {
@@ -44,7 +45,7 @@ public class BotService {
             jda = JDABuilder.createDefault(token)
                     .enableIntents(net.dv8tion.jda.api.requests.GatewayIntent.GUILD_MEMBERS)
                     .setActivity(Activity.watching(props.getBrandName()))
-                    .addEventListeners(shopCommands, adminCommands, memberJoinListener)
+                    .addEventListeners(shopCommands, adminCommands, memberJoinListener, guildJoinListener)
                     .build()
                     .awaitReady();
         } catch (Exception e) {
@@ -54,7 +55,7 @@ public class BotService {
             // Auto-Role läuft trotzdem — als Fallback bei jeder Bot-Interaktion (ohne Intent).
             jda = JDABuilder.createDefault(token)
                     .setActivity(Activity.watching(props.getBrandName()))
-                    .addEventListeners(shopCommands, adminCommands, memberJoinListener)
+                    .addEventListeners(shopCommands, adminCommands, memberJoinListener, guildJoinListener)
                     .build()
                     .awaitReady();
         }
@@ -64,7 +65,7 @@ public class BotService {
     }
 
     private void registerCommands(JDA jda) {
-        List<CommandData> commands = buildCommands();
+        List<CommandData> commands = buildAllCommands();
         var guilds = jda.getGuilds();
         if (guilds.isEmpty()) {
             jda.updateCommands().addCommands(commands).queue();
@@ -81,7 +82,8 @@ public class BotService {
         jda.updateCommands().queue();
     }
 
-    private List<CommandData> buildCommands() {
+    /** Komplette Command-Liste — auch vom {@link GuildJoinListener} für neue Server genutzt. */
+    static List<CommandData> buildAllCommands() {
         return List.of(
                 Commands.slash("shop", "Shows the shop with all categories"),
 
@@ -155,7 +157,7 @@ public class BotService {
         );
     }
 
-    private OptionData productOption() {
+    private static OptionData productOption() {
         return new OptionData(OptionType.STRING, "product", "Product name", true, true);
     }
 }

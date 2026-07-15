@@ -211,6 +211,7 @@ async function init() {
     initDiscountForm();
     initRestockForm();
     initEmbedEditor();
+    initTicketSection();
     initGuildSwitcher();
     initLicenses();
     initChart();
@@ -309,7 +310,7 @@ function showSection(name) {
     const loaders = {
         overview: loadOverview, products: loadProducts, orders: loadOrders,
         customers: loadCustomers, myorders: loadMyOrders,
-        stock: loadStock, embeds: loadEmbedSection,
+        stock: loadStock, embeds: loadEmbedSection, tickets: loadTicketSection,
         settings: loadSettingsForm, server: loadServerSection, billing: loadBillingSection,
         delivery: loadDelivery
     };
@@ -1574,6 +1575,137 @@ function addButtonEditor(button = {}) {
         el.addEventListener('change', renderEmbedPreview);
     });
     $('#buttonsEditor').appendChild(wrap);
+}
+
+// ===== Ticket System =====
+
+const TICKET_INPUT_IDS = ['tPanelTitle', 'tPanelDescription', 'tPanelColor', 'tButtonLabel', 'tButtonEmoji',
+    'tPanelThumbnail', 'tPanelImage'];
+
+function initTicketSection() {
+    TICKET_INPUT_IDS.forEach(id => $('#' + id)?.addEventListener('input', renderTicketPreview));
+    $('#ticketGuildSelect')?.addEventListener('change', loadTicketConfig);
+    $('#ticketSaveBtn')?.addEventListener('click', () => saveTicketConfig(false));
+    $('#ticketPostBtn')?.addEventListener('click', () => saveTicketConfig(true));
+}
+
+async function loadTicketSection() {
+    if (!guildsCache.length) await loadGuildsCache();
+    const select = $('#ticketGuildSelect');
+    if (!guildsCache.length) {
+        select.innerHTML = '<option value="">No server — add the bot first</option>';
+        renderTicketPreview();
+        return;
+    }
+    const prev = select.value || activeGuildId();
+    select.innerHTML = guildsCache.map(g => `<option value="${esc(g.id)}">${esc(g.name)}</option>`).join('');
+    select.value = guildsCache.some(g => g.id === prev) ? prev : guildsCache[0].id;
+    try { channelsCache = await api(apiScope() + '/channels'); } catch (e) { /* bot may be offline */ }
+    loadTicketConfig();
+}
+
+async function loadTicketConfig() {
+    const guildId = $('#ticketGuildSelect').value;
+    if (!guildId) return;
+    try {
+        const [cfg, meta] = await Promise.all([
+            api(`${apiScope()}/tickets/${guildId}`),
+            api(`${apiScope()}/tickets/${guildId}/meta`)
+        ]);
+        $('#tPanelTitle').value = cfg.panelTitle || '';
+        $('#tPanelDescription').value = cfg.panelDescription || '';
+        $('#tPanelColor').value = /^#[0-9a-fA-F]{6}$/.test(cfg.panelColor || '') ? cfg.panelColor
+            : (/^#[0-9a-fA-F]{6}$/.test(settings.brandColor || '') ? settings.brandColor : '#8b95ff');
+        $('#tButtonLabel').value = cfg.buttonLabel || '';
+        $('#tButtonEmoji').value = cfg.buttonEmoji || '';
+        $('#tPanelThumbnail').value = cfg.panelThumbnailUrl || '';
+        $('#tPanelImage').value = cfg.panelImageUrl || '';
+        $('#tNamePrefix').value = cfg.namePrefix || '';
+        $('#tMaxOpen').value = cfg.maxOpenPerUser ?? 1;
+        $('#tMentionSupport').checked = !!cfg.mentionSupport;
+        $('#tWelcomeTitle').value = cfg.welcomeTitle || '';
+        $('#tWelcomeMessage').value = cfg.welcomeMessage || '';
+        $('#tTranscript').checked = !!cfg.transcriptEnabled;
+        $('#tTranscriptDm').checked = !!cfg.transcriptDmUser;
+
+        // Kategorie-Dropdown
+        $('#tCategoryId').innerHTML = '<option value="">No category (top of server)</option>'
+            + (meta.categories || []).map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
+        $('#tCategoryId').value = (meta.categories || []).some(c => c.id === cfg.categoryId) ? cfg.categoryId : '';
+
+        // Support-Rollen (Mehrfachauswahl)
+        const selectedRoles = (cfg.supportRoleIds || '').split(/[\s,]+/).filter(Boolean);
+        $('#tSupportRoles').innerHTML = (meta.roles || []).map(r =>
+            `<option value="${esc(r.id)}"${selectedRoles.includes(r.id) ? ' selected' : ''}>${esc(r.name)}</option>`).join('');
+
+        // Channel-Dropdowns (nur Channels dieses Servers)
+        const guildChannels = channelsCache.filter(c => c.guildId === guildId);
+        const channelOptions = sel => '<option value="">Select channel…</option>' + guildChannels.map(c =>
+            c.writable === 'false'
+                ? `<option value="${esc(c.id)}" disabled>#${esc(c.name)} — bot needs access</option>`
+                : `<option value="${esc(c.id)}"${c.id === sel ? ' selected' : ''}>#${esc(c.name)}</option>`).join('');
+        $('#tTranscriptChannel').innerHTML = channelOptions(cfg.transcriptChannelId);
+        $('#tPanelChannel').innerHTML = channelOptions('');
+
+        renderTicketPreview();
+    } catch (e) { toast(e.message, true); }
+}
+
+function collectTicketConfig() {
+    return {
+        panelTitle: $('#tPanelTitle').value,
+        panelDescription: $('#tPanelDescription').value,
+        panelColor: $('#tPanelColor').value,
+        panelImageUrl: $('#tPanelImage').value,
+        panelThumbnailUrl: $('#tPanelThumbnail').value,
+        buttonLabel: $('#tButtonLabel').value,
+        buttonEmoji: $('#tButtonEmoji').value,
+        categoryId: $('#tCategoryId').value,
+        supportRoleIds: [...$('#tSupportRoles').selectedOptions].map(o => o.value).join(','),
+        maxOpenPerUser: Number($('#tMaxOpen').value) || 0,
+        mentionSupport: $('#tMentionSupport').checked,
+        namePrefix: $('#tNamePrefix').value,
+        welcomeTitle: $('#tWelcomeTitle').value,
+        welcomeMessage: $('#tWelcomeMessage').value,
+        transcriptEnabled: $('#tTranscript').checked,
+        transcriptChannelId: $('#tTranscriptChannel').value,
+        transcriptDmUser: $('#tTranscriptDm').checked
+    };
+}
+
+async function saveTicketConfig(postAfter) {
+    const guildId = $('#ticketGuildSelect').value;
+    if (!guildId) { toast('Add the bot to a server first.', true); return; }
+    try {
+        await api(`${apiScope()}/tickets/${guildId}`, { method: 'PUT', body: collectTicketConfig() });
+        if (postAfter) {
+            const channelId = $('#tPanelChannel').value;
+            if (!channelId) { toast('Please select a channel for the panel.', true); return; }
+            const sent = await api(`${apiScope()}/tickets/${guildId}/panel`, { method: 'POST', body: { channelId } });
+            toast(`Ticket panel posted to #${sent.channel}`);
+        } else {
+            toast('Ticket settings saved');
+        }
+    } catch (e) { toast(e.message, true); }
+}
+
+function renderTicketPreview() {
+    const preview = $('#ticketPreview');
+    if (!preview) return;
+    $('#tPreviewBotName').textContent = settings.shopName || 'Pokal';
+    const title = $('#tPanelTitle').value || '🎫 Support';
+    const desc = $('#tPanelDescription').value || 'Need help? Click the button below to open a private ticket with our team.';
+    const thumb = $('#tPanelThumbnail').value;
+    const image = $('#tPanelImage').value;
+    preview.style.borderLeftColor = $('#tPanelColor').value || 'var(--accent)';
+    let html = `<div class="d-main"><div class="d-title">${esc(title)}</div><div class="d-desc">${esc(desc)}</div></div>`;
+    if (thumb) html += `<img class="d-thumb" src="${esc(thumb)}" alt="" onerror="this.style.display='none'">`;
+    if (image) html += `<img class="d-image" src="${esc(image)}" alt="" onerror="this.style.display='none'">`;
+    html += `<div class="d-footer">${esc(settings.shopName || 'Pokal')}</div>`;
+    preview.innerHTML = html;
+    const emoji = $('#tButtonEmoji').value;
+    const label = $('#tButtonLabel').value || '🎫 Open Ticket';
+    $('#tPreviewButton').innerHTML = `<span class="d-btn style-primary">${emoji ? emojiDisplay(emoji) + ' ' : ''}${esc(label)}</span>`;
 }
 
 // ===== Emoji picker (server custom emojis + common Unicode picks) =====

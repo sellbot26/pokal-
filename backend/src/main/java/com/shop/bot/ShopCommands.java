@@ -71,6 +71,7 @@ public class ShopCommands extends ListenerAdapter {
     private final SettingsService settings;
     private final PlanService planService;
     private final MemberJoinListener autoRole;
+    private final com.shop.service.TicketService ticketService;
 
     /** true = Aktion blockiert, Antwort wurde bereits gesendet. */
     private boolean maintenanceBlocked(net.dv8tion.jda.api.interactions.callbacks.IReplyCallback event) {
@@ -296,40 +297,9 @@ public class ShopCommands extends ListenerAdapter {
             return;
         }
         event.deferReply(true).queue();
-
-        String cleaned = "ticket-" + event.getUser().getName().toLowerCase().replaceAll("[^a-z0-9]", "");
-        String channelName = cleaned.substring(0, Math.min(90, cleaned.length()));
-        var action = guild.createTextChannel(channelName);
-
-        String categoryId = props.getDiscord().getTicketCategoryId();
-        if (categoryId != null && !categoryId.isBlank()) {
-            Category category = guild.getCategoryById(categoryId);
-            if (category != null) action = action.setParent(category);
-        }
-        action = action
-                .addPermissionOverride(guild.getPublicRole(), null, EnumSet.of(Permission.VIEW_CHANNEL))
-                .addMemberPermissionOverride(event.getUser().getIdLong(),
-                        EnumSet.of(Permission.VIEW_CHANNEL, Permission.MESSAGE_SEND, Permission.MESSAGE_HISTORY), null);
-        String supportRole = props.getDiscord().getSupportRoleId();
-        if (supportRole != null && !supportRole.isBlank()) {
-            try {
-                action = action.addRolePermissionOverride(Long.parseLong(supportRole.trim()),
-                        EnumSet.of(Permission.VIEW_CHANNEL, Permission.MESSAGE_SEND, Permission.MESSAGE_HISTORY), null);
-            } catch (NumberFormatException ignored) {
-            }
-        }
-
-        action.queue(channel -> {
-            channel.sendMessage(event.getUser().getAsMention())
-                    .addEmbeds(embeds.base()
-                            .setTitle("🎫 Support Ticket")
-                            .setDescription("Describe your issue — the team will get back to you as soon as possible.")
-                            .build())
-                    .addActionRow(Button.danger("ticket:close", "Close Ticket"))
-                    .queue();
-            event.getHook().sendMessage("🎫 Your ticket has been created: " + channel.getAsMention()).queue();
-        }, err -> event.getHook().sendMessageEmbeds(
-                embeds.error("Ticket could not be created: " + err.getMessage())).queue());
+        ticketService.open(guild, event.getUser(),
+                channelMention -> event.getHook().sendMessage("🎫 Your ticket has been created: " + channelMention).queue(),
+                error -> event.getHook().sendMessageEmbeds(embeds.error(error)).queue());
     }
 
     // ===================== Select-Menüs =====================
@@ -470,10 +440,24 @@ public class ShopCommands extends ListenerAdapter {
                     return;
                 }
                 showCheckout(event, product, 1, null);
+            } else if (id.equals("ticket:open")) {
+                // Panel-Button: gleicher Flow wie /ticket
+                if (event.getGuild() == null) {
+                    event.replyEmbeds(embeds.error("Tickets can only be opened on the server.")).setEphemeral(true).queue();
+                    return;
+                }
+                event.deferReply(true).queue();
+                ticketService.open(event.getGuild(), event.getUser(),
+                        mention -> event.getHook().sendMessage("🎫 Your ticket has been created: " + mention).queue(),
+                        error -> event.getHook().sendMessageEmbeds(embeds.error(error)).queue());
             } else if (id.equals("ticket:close")) {
-                if (event.getChannel().getName().startsWith("ticket-")) {
+                var channel = event.getChannel().asTextChannel();
+                // Ticket-Channels am Topic-Marker erkennen; Alt-Tickets (Name-Prefix) weiter unterstützen
+                boolean isTicket = (channel.getTopic() != null && channel.getTopic().contains("uid:"))
+                        || channel.getName().startsWith("ticket-");
+                if (isTicket) {
                     event.reply("🔒 Closing ticket…").setEphemeral(true).queue();
-                    event.getChannel().asTextChannel().delete().queueAfter(2, java.util.concurrent.TimeUnit.SECONDS);
+                    ticketService.close(channel, event.getUser());
                 }
             } else if (id.startsWith("rate:")) {
                 String[] parts = id.split(":");

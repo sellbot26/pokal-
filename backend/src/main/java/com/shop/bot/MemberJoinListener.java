@@ -21,8 +21,9 @@ import java.util.concurrent.ConcurrentHashMap;
  *  2) Fallback ohne Intent: Bei jeder Bot-Interaktion (/shop, Buttons, …) wird die Rolle
  *     nachgezogen, falls sie fehlt — {@link #ensureAutoRole(Member)}.
  *
- * Settings → General: autoRoleId. Mehrere Rollen (auch aus verschiedenen Servern) können
- * kommagetrennt angegeben werden — pro Server greift die Rolle, die dort existiert.
+ * Settings → General: autoRoleId. Zwei Formate, kommagetrennt kombinierbar:
+ *  - "serverId:roleId"  → Rolle gilt NUR auf diesem Server (empfohlen bei mehreren Servern)
+ *  - "roleId"           → Rolle greift auf dem Server, auf dem sie existiert (Legacy)
  */
 @Component
 @RequiredArgsConstructor
@@ -60,16 +61,28 @@ public class MemberJoinListener extends ListenerAdapter {
 
         var guild = member.getGuild();
         Role role = null;
-        // Mehrere IDs erlaubt (Komma/Leerzeichen) — es greift die Rolle, die in DIESEM Server existiert.
-        for (String id : configured.split("[,\\s]+")) {
-            if (id.isBlank()) continue;
-            role = guild.getRoleById(id.trim());
+        boolean anyForThisGuild = false;
+        // Einträge: "serverId:roleId" (gilt nur auf diesem Server) oder "roleId" (Legacy).
+        for (String entry : configured.split("[,\\s]+")) {
+            if (entry.isBlank()) continue;
+            String roleId = entry.trim();
+            if (roleId.contains(":")) {
+                String[] pair = roleId.split(":", 2);
+                if (!pair[0].trim().equals(guild.getId())) continue; // Eintrag zielt auf anderen Server
+                roleId = pair[1].trim();
+            }
+            anyForThisGuild = true;
+            role = guild.getRoleById(roleId);
             if (role != null) break;
         }
         if (role == null) {
-            log.warn("Auto-Role: Keine der konfigurierten Rollen-IDs ({}) existiert in '{}' — "
-                    + "Rollen-ID in Settings → General prüfen (Discord: Servereinstellungen → Rollen → Rechtsklick → ID kopieren).",
-                    configured, guild.getName());
+            // Nur warnen, wenn ein Eintrag diesen Server MEINT, die Rolle aber fehlt —
+            // Server ohne Auto-Role-Eintrag bleiben still.
+            if (anyForThisGuild) {
+                log.warn("Auto-Role: Keine der konfigurierten Rollen-IDs ({}) existiert in '{}' — "
+                        + "Rollen-ID in Settings → General prüfen (Discord: Servereinstellungen → Rollen → Rechtsklick → ID kopieren).",
+                        configured, guild.getName());
+            }
             return;
         }
         if (member.getRoles().contains(role)) return; // hat die Rolle schon

@@ -30,6 +30,7 @@
             <button data-section="orders" class="nav-btn"><span class="nav-icon" data-icon="file-text"></span> Orders</button>
             <button data-section="customers" class="nav-btn"><span class="nav-icon" data-icon="users"></span> Customers</button>
             <button data-section="embeds" class="nav-btn"><span class="nav-icon" data-icon="message-square"></span> Embed Builder</button>
+            <button data-section="tickets" class="nav-btn"><span class="nav-icon" data-icon="tag"></span> Tickets</button>
             <button data-section="server" class="nav-btn"><span class="nav-icon" data-icon="server"></span> Bot &amp; Servers</button>
             <button data-section="myorders" class="nav-btn"><span class="nav-icon" data-icon="shopping-bag"></span> My Orders</button>
         </nav>
@@ -277,6 +278,100 @@
             </div>
         </section>
 
+        <!-- ===== Tickets ===== -->
+        <section id="section-tickets" class="section" hidden>
+            <div class="section-head">
+                <h2>Ticket System</h2>
+                <div class="row">
+                    <select class="input" id="ticketGuildSelect" style="width:auto;min-width:200px"></select>
+                </div>
+            </div>
+
+            <div class="embed-layout">
+                <div>
+                    <div class="panel">
+                        <h3>Panel Embed</h3>
+                        <p class="muted" style="margin-bottom:10px">This embed gets posted with an "Open Ticket" button — customers click it to open a private ticket.</p>
+                        <label>Title <input class="input" id="tPanelTitle" maxlength="256" placeholder="🎫 Support"></label>
+                        <label>Description <textarea class="input" id="tPanelDescription" rows="4" maxlength="4096" placeholder="Need help? Click the button below to open a private ticket with our team."></textarea></label>
+                        <div class="row">
+                            <label>Color <input class="input" id="tPanelColor" type="color" value="#8b95ff"></label>
+                            <label class="grow">Button label <input class="input" id="tButtonLabel" maxlength="80" placeholder="🎫 Open Ticket"></label>
+                            <label>Button emoji <input class="input" id="tButtonEmoji" maxlength="64" placeholder="🎫" style="width:90px"></label>
+                        </div>
+                        <div class="row">
+                            <label class="grow">Thumbnail (small, top right) <input class="input" id="tPanelThumbnail" placeholder="https://…"></label>
+                            <label class="grow">Large image <input class="input" id="tPanelImage" placeholder="https://…"></label>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <h3>Behavior</h3>
+                        <div class="row">
+                            <label class="grow">Ticket category
+                                <select class="input" id="tCategoryId"><option value="">No category (top of server)</option></select>
+                            </label>
+                            <label>Channel prefix <input class="input" id="tNamePrefix" maxlength="20" placeholder="ticket" style="width:120px"></label>
+                            <label>Limit per user <input class="input" id="tMaxOpen" type="number" min="0" max="25" value="1" style="width:110px"></label>
+                        </div>
+                        <small class="muted">Limit = max. open tickets per user at the same time (0 = unlimited).</small>
+                        <label style="margin-top:10px">Support roles (see &amp; answer all tickets)
+                            <select class="input" id="tSupportRoles" multiple size="5"></select>
+                        </label>
+                        <small class="muted">Hold Ctrl (Cmd on Mac) to select multiple roles.</small>
+                        <div class="switch-row" style="margin-top:10px">
+                            <div class="switch-text"><b>Ping support roles</b><span>Mention the support roles when a new ticket opens.</span></div>
+                            <label class="switch" style="margin:0"><input type="checkbox" id="tMentionSupport"><span class="slider"></span></label>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <h3>Message inside the ticket</h3>
+                        <label>Title <input class="input" id="tWelcomeTitle" maxlength="256" placeholder="🎫 Support Ticket"></label>
+                        <label>Message <textarea class="input" id="tWelcomeMessage" rows="3" maxlength="2000" placeholder="Describe your issue — the team will get back to you as soon as possible."></textarea></label>
+                        <small class="muted">Placeholders: <code>{user}</code> = mention of the ticket opener, <code>{server}</code> = server name.</small>
+                    </div>
+
+                    <div class="panel">
+                        <h3>Transcript</h3>
+                        <div class="switch-row">
+                            <div class="switch-text"><b>Save transcript on close</b><span>When a ticket is closed, the full conversation is saved as a text file.</span></div>
+                            <label class="switch" style="margin:0"><input type="checkbox" id="tTranscript"><span class="slider"></span></label>
+                        </div>
+                        <label style="margin-top:10px">Transcript channel
+                            <select class="input" id="tTranscriptChannel"><option value="">Select channel…</option></select>
+                        </label>
+                        <div class="switch-row" style="margin-top:10px">
+                            <div class="switch-text"><b>DM transcript to user</b><span>Also send the transcript to the ticket opener via DM.</span></div>
+                            <label class="switch" style="margin:0"><input type="checkbox" id="tTranscriptDm"><span class="slider"></span></label>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <h3>Save &amp; Post</h3>
+                        <div class="row">
+                            <select class="input grow" id="tPanelChannel"><option value="">Select channel…</option></select>
+                            <button class="btn btn-primary" id="ticketSaveBtn"><span data-icon="save"></span> Save</button>
+                            <button class="btn btn-primary" id="ticketPostBtn"><span data-icon="send"></span> Post Panel</button>
+                        </div>
+                        <small class="muted">Posting automatically saves the settings first.</small>
+                    </div>
+                </div>
+
+                <div class="embed-preview-wrap">
+                    <div class="preview-label">Live Preview</div>
+                    <div class="discord-msg">
+                        <div class="discord-avatar"><img src="/img/logo.png" alt="" style="width:22px;height:22px"></div>
+                        <div class="discord-body">
+                            <div class="discord-name"><span id="tPreviewBotName">Pokal</span><span class="bot-tag">APP</span></div>
+                            <div class="d-embed" id="ticketPreview"></div>
+                            <div class="d-buttons" id="tPreviewButton"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- ===== Bot & Servers ===== -->
         <section id="section-server" class="section" hidden>
             <h2>Bot &amp; Servers</h2>
@@ -338,10 +433,10 @@
                         <div class="panel">
                             <h3>Bot</h3>
                             <form id="botSettingsForm">
-                                <label>Auto-role ID (assigned to everyone who joins the server)
-                                    <input class="input" id="sAutoRoleId" placeholder="e.g. 1525245668824977518">
+                                <label>Auto-role (assigned to everyone who joins the server)
+                                    <input class="input" id="sAutoRoleId" placeholder="serverId:roleId, serverId:roleId — or just roleId">
                                 </label>
-                                <small class="muted">The bot's role must be <b>above</b> this role and the "Server Members Intent" must be enabled in the Discord Developer Portal.</small>
+                                <small class="muted">Format: <code>serverId:roleId</code> — multiple entries comma-separated, one per server. A plain <code>roleId</code> also works. The bot's role must be <b>above</b> the auto-role, and the "Server Members Intent" must be enabled in the Discord Developer Portal.</small>
                                 <button class="btn btn-primary" type="submit" style="margin-top:12px">Save</button>
                             </form>
                         </div>
