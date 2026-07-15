@@ -1579,60 +1579,38 @@ function addButtonEditor(button = {}) {
 }
 
 // ===== What's New / Changelog =====
-// Neuester Eintrag zuerst — beim ersten Dashboard-Besuch nach einem Update öffnet sich das Modal automatisch.
+// Die Einträge kommen vom Backend (/api/changelog, gepflegt in ChangelogService.java) —
+// dieselbe Quelle nutzt der Bot für die automatischen Update-Posts in Discord.
 
-const CHANGELOG = [
-    {
-        version: '2026-07-16',
-        title: '🎫 Ticket System & Auto-Role',
-        items: [
-            'New <b>Tickets</b> section: build your own ticket panel embed (title, text, color, images, button) with live preview',
-            'Per server: ticket category, support roles, <b>ticket limit per user</b>, channel prefix & support ping',
-            '<b>Transcripts</b>: closed tickets are saved as a text file to a channel — optionally DM\'d to the user',
-            'Auto-role now supports <code>serverId:roleId</code> pairs — one role per server',
-            'Welcome & setup message (incl. Terms of Service) when the bot joins a new server',
-            'Slash commands now register <b>instantly</b> on new servers',
-            '"Powered by Pokal" footer on all product embeds'
-        ]
-    },
-    {
-        version: '2026-07-12',
-        title: '💸 PayPal & Reviews',
-        items: [
-            '<b>PayPal Friends & Family</b> with automatic payment detection via IPN — no API key needed',
-            'New delivery type: <b>Serial/Account</b> (email:pass pools)',
-            '<b>DM broadcast</b> — message all your customers at once',
-            'Post-purchase <b>review DMs</b> with star rating + per-seller review settings'
-        ]
-    },
-    {
-        version: '2026-07-11',
-        title: '🪙 Payments Rework',
-        items: [
-            '<b>10 coins</b> with direct wallet payments — unique amount per order, no API keys',
-            'One <b>Payments</b> tab for all your payment methods',
-            'Maintenance mode + auto-role on server join'
-        ]
-    }
-];
+let changelogCache = null;
 
-function initChangelog() {
+/** Discord-Markdown (**fett**, `code`) → HTML für das Modal. */
+function mdToHtml(text) {
+    return esc(text)
+        .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+        .replace(/`(.+?)`/g, '<code>$1</code>');
+}
+
+async function initChangelog() {
     $('#whatsNewBtn')?.addEventListener('click', openChangelog);
-    if (localStorage.getItem('changelogSeen') !== CHANGELOG[0].version) {
+    try { changelogCache = await api('/api/changelog'); } catch (e) { return; }
+    if (!changelogCache?.length) return;
+    if (localStorage.getItem('changelogSeen') !== changelogCache[0].version) {
         $('#whatsNewDot').hidden = false;
         openChangelog();
     }
 }
 
 function openChangelog() {
-    $('#changelogBody').innerHTML = CHANGELOG.map(entry => `
+    if (!changelogCache?.length) { toast('Changelog not available right now.', true); return; }
+    $('#changelogBody').innerHTML = changelogCache.map(entry => `
         <div class="changelog-entry">
-            <div class="changelog-head"><b>${entry.title}</b><span class="muted">${esc(entry.version)}</span></div>
-            <ul>${entry.items.map(i => `<li>${i}</li>`).join('')}</ul>
+            <div class="changelog-head"><b>${esc(entry.title)}</b><span class="muted">${esc(entry.version)}</span></div>
+            <ul>${entry.items.map(i => `<li>${mdToHtml(i)}</li>`).join('')}</ul>
         </div>`).join('');
     populateIcons();
     $('#changelogModal').hidden = false;
-    localStorage.setItem('changelogSeen', CHANGELOG[0].version);
+    localStorage.setItem('changelogSeen', changelogCache[0].version);
     $('#whatsNewDot').hidden = true;
 }
 
@@ -2160,9 +2138,24 @@ function initSettings() {
         try {
             settings = await api('/api/admin/settings', {
                 method: 'PUT',
-                body: { autoRoleId: $('#sAutoRoleId').value.trim() }
+                body: {
+                    autoRoleId: $('#sAutoRoleId').value.trim(),
+                    updateChannelId: $('#sUpdateChannelId').value.trim()
+                }
             });
             toast('Bot settings saved');
+        } catch (e) { toast(e.message, true); }
+    });
+
+    $('#postUpdateBtn')?.addEventListener('click', async () => {
+        try {
+            // Erst speichern, damit ein frisch eingetragener Channel sofort benutzt wird
+            settings = await api('/api/admin/settings', {
+                method: 'PUT',
+                body: { updateChannelId: $('#sUpdateChannelId').value.trim() }
+            });
+            const result = await api('/api/admin/changelog/post', { method: 'POST' });
+            toast(`Update posted to ${result.sent} channel(s)`);
         } catch (e) { toast(e.message, true); }
     });
 }
@@ -2193,6 +2186,7 @@ async function loadSettingsForm() {
     $('#sLogSales').checked = settings.logSales !== 'false';
     $('#sLogErrors').checked = settings.logErrors !== 'false';
     $('#sAutoRoleId').value = settings.autoRoleId || '';
+    $('#sUpdateChannelId').value = settings.updateChannelId || '';
 }
 
 function setPaymentStatus(badgeId, connected) {

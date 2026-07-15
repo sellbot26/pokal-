@@ -33,6 +33,8 @@ public class SettingsService {
             "paypalFfEmail",
             // Discord-Channels + Logging, direkt über das Dashboard steuerbar
             "logChannelId", "reviewChannelId", "logSales", "logErrors", "logOrders", "siteLogWebhookUrl",
+            // Update-Ankündigungen: Channel(s) für automatische Changelog-Posts
+            "updateChannelId",
             // Stripe (Karte) — Site-weit
             "stripeSecretKey", "stripeWebhookSecret"
     );

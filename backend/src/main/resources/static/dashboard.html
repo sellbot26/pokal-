@@ -438,7 +438,14 @@
                                     <input class="input" id="sAutoRoleId" placeholder="serverId:roleId, serverId:roleId — or just roleId">
                                 </label>
                                 <small class="muted">Format: <code>serverId:roleId</code> — multiple entries comma-separated, one per server. A plain <code>roleId</code> also works. The bot's role must be <b>above</b> the auto-role, and the "Server Members Intent" must be enabled in the Discord Developer Portal.</small>
-                                <button class="btn btn-primary" type="submit" style="margin-top:12px">Save</button>
+                                <label style="margin-top:12px">Update channel ID(s) — automatic update announcements
+                                    <input class="input" id="sUpdateChannelId" placeholder="channelId, channelId — one per server">
+                                </label>
+                                <small class="muted">After every update the bot automatically posts an English changelog embed into these channels. Multiple channel IDs comma-separated.</small>
+                                <div class="row" style="margin-top:12px">
+                                    <button class="btn btn-primary" type="submit">Save</button>
+                                    <button class="btn btn-ghost" type="button" id="postUpdateBtn"><span data-icon="send"></span> Post latest update now</button>
+                                </div>
                             </form>
                         </div>
 

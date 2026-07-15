@@ -29,6 +29,7 @@ public class BotService {
     private final AdminCommands adminCommands;
     private final MemberJoinListener memberJoinListener;
     private final GuildJoinListener guildJoinListener;
+    private final com.shop.service.ChangelogService changelog;
 
     @EventListener(ApplicationReadyEvent.class)
     public void start() throws InterruptedException {
@@ -62,6 +63,8 @@ public class BotService {
         holder.set(jda);
         registerCommands(jda);
         log.info("Discord-Bot gestartet als {}", jda.getSelfUser().getName());
+        // Automatische Update-Ankündigung: neue Changelog-Version nach dem Deploy posten
+        changelog.postIfNew();
     }
 
     private void registerCommands(JDA jda) {
