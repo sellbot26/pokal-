@@ -13,11 +13,6 @@ import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.security.web.util.matcher.RegexRequestMatcher;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
-import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -35,10 +30,8 @@ public class SecurityConfig {
         csrfHandler.setCsrfRequestAttributeName(null);
 
         http
-                // CORS: Die SecureChat-/SilentLink-App läuft als native App (Android/iOS/Electron)
-                // in einer WebView mit fremdem Origin (z. B. https://localhost) und ruft /api/chat/**
-                // cross-origin auf. Ohne diese Freigabe schlägt der Preflight fehl → "Failed to fetch".
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                // CORS für /api/chat/** wird auf MVC-Ebene in WebConfig geregelt (native App/WebView).
+                // Der Preflight (OPTIONS) ist per permitAll + CSRF-safe durchgelassen und landet dort.
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(csrfRepo)
                         .csrfTokenRequestHandler(csrfHandler)
@@ -78,25 +71,5 @@ public class SecurityConfig {
                 // im Dashboard-iframe. sameOrigin erlaubt nur die eigene Domain, fremde Seiten weiterhin nicht.
                 .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()));
         return http.build();
-    }
-
-    /**
-     * CORS nur für die Chat-API. Die native App (Capacitor/Electron) authentifiziert sich
-     * per {@code X-Chat-Token}-Header, nicht per Cookie — daher keine Credentials nötig und
-     * wir können alle Origins erlauben. Der {@code X-Chat-Token}-Header löst einen Preflight
-     * (OPTIONS) aus, der hier beantwortet wird, statt vom Security-Filter mit 403 geblockt.
-     */
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration cfg = new CorsConfiguration();
-        cfg.setAllowedOriginPatterns(List.of("*"));
-        cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        cfg.setAllowedHeaders(List.of("*"));
-        cfg.setAllowCredentials(false);
-        cfg.setMaxAge(3600L);
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/api/chat/**", cfg);
-        return source;
     }
 }

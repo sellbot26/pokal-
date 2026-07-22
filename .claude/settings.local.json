@@ -45,7 +45,9 @@
       "Bash(npx cap *)",
       "Bash(cd \"/c/Users/xrsel/Desktop/Neuer Ordner/silent-link\" && cat capacitor.config.json && echo \"----- package.json -----\" && cat package.json 2>/dev/null | head -60)",
       "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" -X POST https://www.pokal.shop/api/chat/login -H \"Content-Type: application/json\" -d '{\"username\":\"x\",\"password\":\"y\"}')",
-      "Bash(curl -s -i -X OPTIONS https://www.pokal.shop/api/chat/login -H \"Origin: https://localhost\" -H \"Access-Control-Request-Method: POST\" -H \"Access-Control-Request-Headers: content-type,x-chat-token\")"
+      "Bash(curl -s -i -X OPTIONS https://www.pokal.shop/api/chat/login -H \"Origin: https://localhost\" -H \"Access-Control-Request-Method: POST\" -H \"Access-Control-Request-Headers: content-type,x-chat-token\")",
+      "Bash(JAVA_HOME=\"/c/Program Files/Eclipse Adoptium/jdk-21.0.11.10-hotspot\" \"/c/Users/xrsel/tools/apache-maven-3.9.9/bin/mvn.cmd\" -q compile)",
+      "Bash(echo \"BUILD OK exit=$?\")"
     ]
   }
 }
