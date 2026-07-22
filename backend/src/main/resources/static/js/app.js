@@ -212,6 +212,8 @@ async function init() {
     initRestockForm();
     initEmbedEditor();
     initTicketSection();
+    initGiveawaySection();
+    initStorefrontSection();
     initChangelog();
     initGuildSwitcher();
     initLicenses();
@@ -308,10 +310,18 @@ function showSection(name) {
     if (!section) return;
     section.hidden = false;
     $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.section === name));
+    // Topbar-Titel folgt der aktiven Sektion (Nav-Text, sonst Sektions-Überschrift)
+    const tbTitle = $('#topbarTitle');
+    if (tbTitle) {
+        const navBtn = document.querySelector(`.nav-btn[data-section="${name}"]`);
+        tbTitle.textContent = navBtn ? navBtn.textContent.trim()
+            : (section.querySelector('h1, h2')?.textContent.trim() || 'Dashboard');
+    }
     const loaders = {
         overview: loadOverview, products: loadProducts, orders: loadOrders,
         customers: loadCustomers, myorders: loadMyOrders,
         stock: loadStock, embeds: loadEmbedSection, tickets: loadTicketSection,
+        giveaways: loadGiveawaySection, storefront: loadStorefrontSection,
         settings: loadSettingsForm, server: loadServerSection, billing: loadBillingSection,
         delivery: loadDelivery
     };
@@ -1743,6 +1753,543 @@ function renderTicketPreview() {
     const emoji = $('#tButtonEmoji').value;
     const label = $('#tButtonLabel').value || '🎫 Open Ticket';
     $('#tPreviewButton').innerHTML = `<span class="d-btn style-primary">${emoji ? emojiDisplay(emoji) + ' ' : ''}${esc(label)}</span>`;
+}
+
+// ===== Giveaways =====
+
+const GIVEAWAY_INPUT_IDS = ['gwPrize', 'gwDescription', 'gwWinners', 'gwColor', 'gwImage'];
+
+function initGiveawaySection() {
+    GIVEAWAY_INPUT_IDS.forEach(id => $('#' + id)?.addEventListener('input', renderGiveawayPreview));
+    $('#gwGuildSelect')?.addEventListener('change', loadGiveawayGuild);
+    $('#gwPostBtn')?.addEventListener('click', postGiveaway);
+    $('#gwRefreshBtn')?.addEventListener('click', loadGiveawayList);
+    // Aktionen in der Liste (End / Reroll / Cancel) über Event-Delegation
+    $('#gwList')?.addEventListener('click', e => {
+        const btn = e.target.closest('button[data-gw-action]');
+        if (btn) giveawayAction(btn.dataset.gwId, btn.dataset.gwAction);
+    });
+}
+
+async function loadGiveawaySection() {
+    if (!guildsCache.length) await loadGuildsCache();
+    const select = $('#gwGuildSelect');
+    if (!guildsCache.length) {
+        select.innerHTML = '<option value="">No server — add the bot first</option>';
+        $('#gwList').innerHTML = '<p class="muted">Add the bot to a server first.</p>';
+        renderGiveawayPreview();
+        return;
+    }
+    const prev = select.value || activeGuildId();
+    select.innerHTML = guildsCache.map(g => `<option value="${esc(g.id)}">${esc(g.name)}</option>`).join('');
+    select.value = guildsCache.some(g => g.id === prev) ? prev : guildsCache[0].id;
+    try { channelsCache = await api(apiScope() + '/channels'); } catch (e) { /* bot may be offline */ }
+    loadGiveawayGuild();
+}
+
+async function loadGiveawayGuild() {
+    const guildId = $('#gwGuildSelect').value;
+    if (!guildId) return;
+
+    // Farb-Default aus der Marke
+    if (/^#[0-9a-fA-F]{6}$/.test(settings.brandColor || '')) $('#gwColor').value = settings.brandColor;
+
+    // Channel-Dropdown (nur Channels dieses Servers)
+    const guildChannels = channelsCache.filter(c => c.guildId === guildId);
+    $('#gwChannel').innerHTML = '<option value="">Select channel…</option>' + guildChannels.map(c =>
+        c.writable === 'false'
+            ? `<option value="${esc(c.id)}" disabled>#${esc(c.name)} — bot needs access</option>`
+            : `<option value="${esc(c.id)}">#${esc(c.name)}</option>`).join('');
+
+    // Rollen-Dropdown (Gewinner-Rolle) — Rollen kommen aus dem Ticket-Meta-Endpoint
+    try {
+        const meta = await api(`${apiScope()}/tickets/${guildId}/meta`);
+        $('#gwWinnerRole').innerHTML = '<option value="">No role</option>' + (meta.roles || []).map(r =>
+            `<option value="${esc(r.id)}">${esc(r.name)}</option>`).join('');
+    } catch (e) { /* bot offline — Rolle bleibt optional */ }
+
+    loadGiveawayList();
+    renderGiveawayPreview();
+}
+
+async function loadGiveawayList() {
+    const guildId = $('#gwGuildSelect').value;
+    if (!guildId) return;
+    try {
+        const list = await api(`${apiScope()}/giveaways/${guildId}`);
+        if (!list.length) { $('#gwList').innerHTML = '<p class="muted">No giveaways yet.</p>'; return; }
+        $('#gwList').innerHTML = list.map(g => {
+            const badge = g.status === 'RUNNING' ? '<span class="badge badge-ok">Running</span>'
+                : g.status === 'ENDED' ? '<span class="badge badge-PAID">Ended</span>'
+                : '<span class="badge badge-out">Cancelled</span>';
+            const ends = g.endsAt ? new Date(g.endsAt).toLocaleString() : '—';
+            const winners = (g.winnerIds || '').split(',').filter(Boolean);
+            const winnerLine = winners.length
+                ? `<div class="muted" style="margin-top:4px">🏆 Winners: ${winners.map(w => `&lt;@${esc(w)}&gt;`).join(', ')}</div>` : '';
+            const actions = g.status === 'RUNNING'
+                ? `<button class="btn btn-sm" data-gw-action="end" data-gw-id="${g.id}">End now</button>
+                   <button class="btn btn-sm btn-danger" data-gw-action="cancel" data-gw-id="${g.id}">Cancel</button>`
+                : g.status === 'ENDED'
+                    ? `<button class="btn btn-sm" data-gw-action="reroll" data-gw-id="${g.id}">Reroll</button>` : '';
+            return `<div class="gw-row">
+                <div class="gw-row-main">
+                    <div><b>${esc(g.prize)}</b> ${badge}</div>
+                    <div class="muted" style="font-size:12px">🎟️ ${g.entrantCount} entries · 🏆 ${g.winnersCount} · ⏰ ${esc(ends)}</div>
+                    ${winnerLine}
+                </div>
+                <div class="gw-row-actions">${actions}</div>
+            </div>`;
+        }).join('');
+    } catch (e) { $('#gwList').innerHTML = `<p class="muted">${esc(e.message)}</p>`; }
+}
+
+function renderGiveawayPreview() {
+    const preview = $('#giveawayPreview');
+    if (!preview) return;
+    $('#gwPreviewBotName').textContent = settings.shopName || 'Pokal';
+    const prize = $('#gwPrize').value || 'Your prize';
+    const desc = $('#gwDescription').value;
+    const winners = Number($('#gwWinners').value) || 1;
+    const image = $('#gwImage').value;
+    preview.style.borderLeftColor = $('#gwColor').value || 'var(--accent)';
+    let body = (desc ? esc(desc) + '<br><br>' : '') + 'Click <b>Enter</b> below to join!<br><br>'
+        + `🏆 <b>Winners:</b> ${winners}<br>⏰ <b>Ends:</b> when the timer runs out`;
+    let html = `<div class="d-main"><div class="d-title">🎉 GIVEAWAY: ${esc(prize)}</div><div class="d-desc">${body}</div></div>`;
+    if (image) html += `<img class="d-image" src="${esc(image)}" alt="" onerror="this.style.display='none'">`;
+    html += `<div class="d-footer">${esc(settings.shopName || 'Pokal')}</div>`;
+    preview.innerHTML = html;
+}
+
+async function postGiveaway() {
+    const guildId = $('#gwGuildSelect').value;
+    if (!guildId) { toast('Add the bot to a server first.', true); return; }
+    const channelId = $('#gwChannel').value;
+    if (!channelId) { toast('Please select a channel.', true); return; }
+    if (!$('#gwPrize').value.trim()) { toast('Please enter a prize.', true); return; }
+    const body = {
+        channelId,
+        prize: $('#gwPrize').value,
+        description: $('#gwDescription').value,
+        color: $('#gwColor').value,
+        imageUrl: $('#gwImage').value,
+        winnersCount: Number($('#gwWinners').value) || 1,
+        durationMinutes: Number($('#gwDuration').value) || 60,
+        winnerRoleId: $('#gwWinnerRole').value,
+        dmMessage: $('#gwDmMessage').value
+    };
+    try {
+        await api(`${apiScope()}/giveaways/${guildId}`, { method: 'POST', body });
+        toast('🎉 Giveaway started!');
+        $('#gwPrize').value = ''; $('#gwDescription').value = ''; $('#gwImage').value = ''; $('#gwDmMessage').value = '';
+        renderGiveawayPreview();
+        loadGiveawayList();
+    } catch (e) { toast(e.message, true); }
+}
+
+async function giveawayAction(id, action) {
+    const guildId = $('#gwGuildSelect').value;
+    if (action === 'cancel' && !confirm('Cancel this giveaway without picking a winner?')) return;
+    if (action === 'end' && !confirm('End now and draw the winner(s) immediately?')) return;
+    try {
+        const path = `${apiScope()}/giveaways/${guildId}/${id}` + (action === 'cancel' ? '' : `/${action}`);
+        await api(path, { method: action === 'cancel' ? 'DELETE' : 'POST' });
+        toast(action === 'reroll' ? '🔁 Rerolled!' : action === 'end' ? '🎉 Winners drawn!' : 'Giveaway cancelled');
+        loadGiveawayList();
+    } catch (e) { toast(e.message, true); }
+}
+
+// ===== Storefront (public seller page, Pro feature) =====
+
+function initStorefrontSection() {
+    $('#sfGuildSelect')?.addEventListener('change', loadStorefrontConfig);
+    $('#sfSaveBtn')?.addEventListener('click', saveStorefront);
+    $('#sfCoverUpload')?.addEventListener('click', () => $('#sfCoverFile').click());
+    $('#sfAvatarUpload')?.addEventListener('click', () => $('#sfAvatarFile').click());
+    $('#sfCoverFile')?.addEventListener('change', () => uploadStorefrontImage('sfCoverFile', 'sfCoverUrl'));
+    $('#sfAvatarFile')?.addEventListener('change', () => uploadStorefrontImage('sfAvatarFile', 'sfAvatarUrl'));
+    $('#sfSlug')?.addEventListener('input', updateStorefrontLink);
+
+    // Untertabs (General / Design / Content / Links / Payments)
+    document.querySelectorAll('.sf-subtab').forEach(btn => btn.addEventListener('click', () => {
+        document.querySelectorAll('.sf-subtab').forEach(b => b.classList.toggle('active', b === btn));
+        document.querySelectorAll('.sf-pane').forEach(p => p.hidden = p.dataset.sfpane !== btn.dataset.sftab);
+    }));
+
+    // Template-Picker
+    document.querySelectorAll('#sfTplGrid .sf-tpl-card').forEach(card => card.addEventListener('click', () => {
+        document.querySelectorAll('#sfTplGrid .sf-tpl-card').forEach(c => c.classList.toggle('active', c === card));
+    }));
+
+    // FAQ- und Custom-Tab-Editoren
+    $('#sfFaqAdd')?.addEventListener('click', () => addFaqRow());
+    $('#sfTabAdd')?.addEventListener('click', () => addCustomTabRow());
+
+    // Drag & Drop: Sektions-Reihenfolge
+    const sectionList = $('#sfSectionOrder');
+    if (sectionList) {
+        [...sectionList.children].forEach(makeDraggableRow);
+        enableDragList(sectionList);
+    }
+
+    // Design-Optionen
+    $('#sfColorsOn')?.addEventListener('change', () => { $('#sfColorsRow').hidden = !$('#sfColorsOn').checked; });
+    $('#sfRadius')?.addEventListener('input', updateRadiusLabel);
+    $('#sfBgOverlay')?.addEventListener('input', () => { $('#sfBgOverlayVal').textContent = $('#sfBgOverlay').value + '%'; });
+    $('#sfBgImageUpload')?.addEventListener('click', () => $('#sfBgImageFile').click());
+    $('#sfBgImageFile')?.addEventListener('change', () => uploadStorefrontImage('sfBgImageFile', 'sfBgImageUrl'));
+}
+
+function updateRadiusLabel() {
+    const v = +$('#sfRadius').value;
+    $('#sfRadiusVal').textContent = v < 0 ? 'default' : v + 'px';
+}
+
+// ===== Drag & Drop (Sektionen, Tabs) =====
+
+function enableDragList(list) {
+    if (!list || list.dataset.dragReady) return;
+    list.dataset.dragReady = '1';
+    list.addEventListener('dragover', e => {
+        e.preventDefault();
+        const dragging = list.querySelector('.dragging');
+        if (!dragging) return;
+        const after = [...list.children].filter(c => c !== dragging)
+            .find(c => e.clientY < c.getBoundingClientRect().top + c.offsetHeight / 2);
+        if (after) list.insertBefore(dragging, after); else list.appendChild(dragging);
+    });
+}
+
+function makeDraggableRow(row) {
+    row.addEventListener('dragstart', () => row.classList.add('dragging'));
+    row.addEventListener('dragend', () => row.classList.remove('dragging'));
+}
+
+/** Baut die Tab-Reihenfolge-Liste aus den festen Tabs + aktuellen Custom-Tabs auf. */
+function refreshTabOrderList(savedOrder) {
+    const list = $('#sfTabOrder');
+    if (!list) return;
+    const current = savedOrder || [...list.children].map(r => r.dataset.key);
+    const defs = [
+        ['products', 'Products'], ['reviews', 'Reviews'], ['about', 'About'], ['faq', 'FAQ'],
+        ...collectCustomTabs().map((t, i) => ['custom' + i, t.title])
+    ];
+    const idx = key => { const i = current.indexOf(key); return i < 0 ? 999 : i; };
+    defs.sort((a, b) => idx(a[0]) - idx(b[0]));
+    list.innerHTML = '';
+    defs.forEach(([key, label]) => {
+        const row = document.createElement('div');
+        row.className = 'sf-drag-row';
+        row.draggable = true;
+        row.dataset.key = key;
+        row.innerHTML = '<span class="grip">⠿</span> ';
+        row.appendChild(document.createTextNode(label));
+        makeDraggableRow(row);
+        list.appendChild(row);
+    });
+    enableDragList(list);
+}
+
+async function uploadStorefrontImage(fileId, targetId) {
+    const file = $('#' + fileId).files[0];
+    if (!file) return;
+    const form = new FormData();
+    form.append('file', file);
+    try {
+        const result = await api('/api/upload', { method: 'POST', body: form });
+        $('#' + targetId).value = result.url;
+        toast('Image uploaded');
+    } catch (e) { toast(e.message, true); }
+}
+
+async function loadStorefrontSection() {
+    const pro = planAtLeast('PRO');
+    $('#sfPlanLock').hidden = pro;
+    $('#sfUpgradeNotice').hidden = pro;
+    $('#sfEditor').hidden = !pro;
+    if (!pro) return;
+
+    if (!guildsCache.length) await loadGuildsCache();
+    const select = $('#sfGuildSelect');
+    if (!guildsCache.length) {
+        select.innerHTML = '<option value="">No server — add the bot first</option>';
+        return;
+    }
+    const prev = select.value || activeGuildId();
+    select.innerHTML = guildsCache.map(g => `<option value="${esc(g.id)}">${esc(g.name)}</option>`).join('');
+    select.value = guildsCache.some(g => g.id === prev) ? prev : guildsCache[0].id;
+    loadStorefrontConfig();
+}
+
+async function loadStorefrontConfig() {
+    const guildId = $('#sfGuildSelect').value;
+    if (!guildId) return;
+    try {
+        const c = await api(`${apiScope()}/storefront/${guildId}`);
+        $('#sfSlug').value = c.slug || '';
+        updateStorefrontLink();
+        $('#sfEnabled').checked = !!c.enabled;
+        $('#sfDisplayName').value = c.displayName || '';
+        $('#sfTagline').value = c.tagline || '';
+        $('#sfAccent').value = /^#[0-9a-fA-F]{6}$/.test(c.accentColor || '') ? c.accentColor
+            : (/^#[0-9a-fA-F]{6}$/.test(settings.brandColor || '') ? settings.brandColor : '#8b95ff');
+        $('#sfAccent2').value = /^#[0-9a-fA-F]{6}$/.test(c.accent2Color || '') ? c.accent2Color : '#8b5cf6';
+        $('#sfCoverUrl').value = c.coverUrl || '';
+        $('#sfAvatarUrl').value = c.avatarUrl || '';
+        $('#sfDiscordInvite').value = c.discordInvite || '';
+        $('#sfWebsite').value = c.website || '';
+        $('#sfAboutText').value = c.aboutText || '';
+        $('#sfShowReviews').checked = c.showReviews !== false;
+        $('#sfShowAbout').checked = c.showAbout !== false;
+        $('#sfShowFaq').checked = c.showFaq !== false;
+        $('#sfShowStats').checked = c.showStats !== false;
+        $('#sfShowPayments').checked = c.showPayments !== false;
+        // Design
+        const tpl = c.template || 'classic';
+        document.querySelectorAll('#sfTplGrid .sf-tpl-card')
+            .forEach(card => card.classList.toggle('active', card.dataset.tpl === tpl));
+        $('#sfTheme').value = c.theme === 'light' ? 'light' : 'dark';
+        $('#sfFont').value = ['grotesk', 'inter', 'serif', 'mono'].includes(c.font) ? c.font : 'grotesk';
+        $('#sfBannerText').value = c.bannerText || '';
+        $('#sfFooterText').value = c.footerText || '';
+        // Socials
+        $('#sfTwitter').value = c.twitter || '';
+        $('#sfYoutube').value = c.youtube || '';
+        $('#sfTiktok').value = c.tiktok || '';
+        $('#sfTelegram').value = c.telegram || '';
+        $('#sfInstagram').value = c.instagram || '';
+        // FAQ + eigene Tabs
+        renderFaqEditor(parseJsonArraySafe(c.faqJson));
+        renderCustomTabsEditor(parseJsonArraySafe(c.customTabsJson));
+        // Erweiterte Design-Einstellungen
+        loadStorefrontDesign(c.designJson);
+        refreshStorefrontPreview();
+        loadStorefrontPayments(guildId);
+    } catch (e) { toast(e.message, true); }
+}
+
+function loadStorefrontDesign(raw) {
+    let dz = {};
+    try { dz = JSON.parse(raw || '{}') || {}; } catch (e) { dz = {}; }
+    if (typeof dz !== 'object' || Array.isArray(dz)) dz = {};
+    $('#sfPageWidth').value = ['narrow', 'normal', 'wide'].includes(dz.pageWidth) ? dz.pageWidth : 'normal';
+    $('#sfCoverHeight').value = ['hidden', 'small', 'normal', 'large'].includes(dz.coverHeight) ? dz.coverHeight : 'normal';
+    $('#sfHeroAlign').value = dz.heroAlign === 'center' ? 'center' : 'left';
+    $('#sfAvatarShape').value = ['rounded', 'circle', 'square'].includes(dz.avatarShape) ? dz.avatarShape : 'rounded';
+    $('#sfBtnStyle').value = ['pill', 'rounded', 'square'].includes(dz.buttonStyle) ? dz.buttonStyle : '';
+    $('#sfRadius').value = (dz.radius === undefined || dz.radius === null || dz.radius === '') ? -1 : Math.max(0, Math.min(28, +dz.radius || 0));
+    updateRadiusLabel();
+    const hex = v => /^#[0-9a-fA-F]{6}$/.test(v || '');
+    const colorsOn = hex(dz.bgColor) || hex(dz.panelColor) || hex(dz.textColor);
+    $('#sfColorsOn').checked = colorsOn;
+    $('#sfColorsRow').hidden = !colorsOn;
+    $('#sfBgColor').value = hex(dz.bgColor) ? dz.bgColor : '#0a0a0f';
+    $('#sfPanelColor').value = hex(dz.panelColor) ? dz.panelColor : '#14141f';
+    $('#sfTextColor').value = hex(dz.textColor) ? dz.textColor : '#f2f3f8';
+    $('#sfBgImageUrl').value = dz.bgImageUrl || '';
+    $('#sfBgOverlay').value = (dz.bgOverlay === undefined || dz.bgOverlay === null) ? 85 : Math.max(0, Math.min(100, +dz.bgOverlay || 0));
+    $('#sfBgOverlayVal').textContent = $('#sfBgOverlay').value + '%';
+    $('#sfGridCols').value = ['2', '3', '4'].includes(String(dz.gridCols)) ? String(dz.gridCols) : 'auto';
+    $('#sfCtaText').value = dz.ctaText || '';
+    $('#sfShowDesc').checked = dz.showDescriptions !== false;
+    $('#sfShowStock').checked = dz.showStock !== false;
+    $('#sfShowCats').checked = dz.showCategories !== false;
+    $('#sfChipsText').value = Array.isArray(dz.chips) ? dz.chips.join('\n') : '';
+    $('#sfCustomCss').value = dz.customCss || '';
+    // Sektions-Reihenfolge auf die Drag-Liste anwenden (Standard, wenn nichts gespeichert)
+    const sectionList = $('#sfSectionOrder');
+    if (sectionList) {
+        const order = Array.isArray(dz.sectionOrder) && dz.sectionOrder.length ? dz.sectionOrder : ['stats', 'chips', 'tabs'];
+        order.forEach(key => {
+            const row = sectionList.querySelector(`[data-key="${key}"]`);
+            if (row) sectionList.appendChild(row);
+        });
+    }
+    // Tab-Reihenfolge-Liste aufbauen (Custom-Tabs sind zu diesem Zeitpunkt schon geladen);
+    // ohne gespeicherte Reihenfolge explizit die Standard-Reihenfolge, damit beim
+    // Server-Wechsel nichts vom vorherigen Server hängen bleibt
+    refreshTabOrderList(Array.isArray(dz.tabOrder) ? dz.tabOrder
+        : ['products', 'reviews', 'about', 'faq', 'custom0', 'custom1', 'custom2', 'custom3']);
+}
+
+function collectStorefrontDesign() {
+    const dz = {};
+    if ($('#sfPageWidth').value !== 'normal') dz.pageWidth = $('#sfPageWidth').value;
+    if ($('#sfCoverHeight').value !== 'normal') dz.coverHeight = $('#sfCoverHeight').value;
+    if ($('#sfHeroAlign').value === 'center') dz.heroAlign = 'center';
+    if ($('#sfAvatarShape').value !== 'rounded') dz.avatarShape = $('#sfAvatarShape').value;
+    if ($('#sfBtnStyle').value) dz.buttonStyle = $('#sfBtnStyle').value;
+    if (+$('#sfRadius').value >= 0) dz.radius = +$('#sfRadius').value;
+    if ($('#sfColorsOn').checked) {
+        dz.bgColor = $('#sfBgColor').value;
+        dz.panelColor = $('#sfPanelColor').value;
+        dz.textColor = $('#sfTextColor').value;
+    }
+    if ($('#sfBgImageUrl').value.trim()) {
+        dz.bgImageUrl = $('#sfBgImageUrl').value.trim();
+        dz.bgOverlay = +$('#sfBgOverlay').value;
+    }
+    if ($('#sfGridCols').value !== 'auto') dz.gridCols = $('#sfGridCols').value;
+    if ($('#sfCtaText').value.trim()) dz.ctaText = $('#sfCtaText').value.trim();
+    if (!$('#sfShowDesc').checked) dz.showDescriptions = false;
+    if (!$('#sfShowStock').checked) dz.showStock = false;
+    if (!$('#sfShowCats').checked) dz.showCategories = false;
+    const chips = $('#sfChipsText').value.split('\n').map(s => s.trim()).filter(Boolean).slice(0, 8);
+    if (chips.length) dz.chips = chips;
+    if ($('#sfCustomCss').value.trim()) dz.customCss = $('#sfCustomCss').value.trim();
+    // Drag & Drop-Reihenfolgen (nur speichern, wenn sie vom Standard abweichen)
+    const sectionOrder = [...document.querySelectorAll('#sfSectionOrder .sf-drag-row')].map(r => r.dataset.key);
+    if (sectionOrder.length && sectionOrder.join(',') !== 'stats,chips,tabs') dz.sectionOrder = sectionOrder;
+    const tabOrder = [...document.querySelectorAll('#sfTabOrder .sf-drag-row')].map(r => r.dataset.key);
+    const defaultTabs = ['products', 'reviews', 'about', 'faq', 'custom0', 'custom1', 'custom2', 'custom3'];
+    if (tabOrder.length && tabOrder.join(',') !== defaultTabs.slice(0, tabOrder.length).join(',')) dz.tabOrder = tabOrder;
+    return JSON.stringify(dz);
+}
+
+function parseJsonArraySafe(raw) {
+    try { const v = JSON.parse(raw || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; }
+}
+
+// ===== FAQ-Editor =====
+
+function renderFaqEditor(items) {
+    $('#sfFaqEditor').innerHTML = '';
+    items.forEach(item => addFaqRow(item.q || '', item.a || ''));
+}
+
+function addFaqRow(q = '', a = '') {
+    const editor = $('#sfFaqEditor');
+    if (editor.children.length >= 10) { toast('Maximum of 10 FAQ entries.', true); return; }
+    const row = document.createElement('div');
+    row.className = 'sf-faq-row';
+    row.innerHTML = `
+        <button type="button" class="sf-row-del" title="Remove">✕</button>
+        <label>Question <input class="input sf-faq-q" maxlength="160" placeholder="How fast is delivery?"></label>
+        <label style="margin-top:8px">Answer <textarea class="input sf-faq-a" rows="2" maxlength="1000" placeholder="Instant — delivered automatically after payment."></textarea></label>`;
+    row.querySelector('.sf-faq-q').value = q;
+    row.querySelector('.sf-faq-a').value = a;
+    row.querySelector('.sf-row-del').addEventListener('click', () => row.remove());
+    editor.appendChild(row);
+}
+
+function collectFaq() {
+    return [...document.querySelectorAll('#sfFaqEditor .sf-faq-row')]
+        .map(row => ({ q: row.querySelector('.sf-faq-q').value.trim(), a: row.querySelector('.sf-faq-a').value.trim() }))
+        .filter(f => f.q);
+}
+
+// ===== Custom-Tabs-Editor =====
+
+function renderCustomTabsEditor(items) {
+    $('#sfTabsEditor').innerHTML = '';
+    items.slice(0, 4).forEach(item => addCustomTabRow(item.title || '', item.content || ''));
+}
+
+function addCustomTabRow(title = '', content = '') {
+    const editor = $('#sfTabsEditor');
+    if (editor.children.length >= 4) { toast('Maximum of 4 custom tabs.', true); return; }
+    const row = document.createElement('div');
+    row.className = 'sf-ctab-row';
+    row.innerHTML = `
+        <button type="button" class="sf-row-del" title="Remove">✕</button>
+        <label>Tab title <input class="input sf-ctab-title" maxlength="24" placeholder="Warranty"></label>
+        <label style="margin-top:8px">Content <textarea class="input sf-ctab-content" rows="3" maxlength="3000" placeholder="Your warranty terms, rules, vouches…"></textarea></label>`;
+    row.querySelector('.sf-ctab-title').value = title;
+    row.querySelector('.sf-ctab-content').value = content;
+    row.querySelector('.sf-row-del').addEventListener('click', () => { row.remove(); refreshTabOrderList(); });
+    row.querySelector('.sf-ctab-title').addEventListener('change', () => refreshTabOrderList());
+    editor.appendChild(row);
+    refreshTabOrderList();
+}
+
+function collectCustomTabs() {
+    return [...document.querySelectorAll('#sfTabsEditor .sf-ctab-row')]
+        .map(row => ({ title: row.querySelector('.sf-ctab-title').value.trim(), content: row.querySelector('.sf-ctab-content').value.trim() }))
+        .filter(t => t.title);
+}
+
+// ===== Payments-Übersicht (dieselben Methoden wie im Discord-Checkout) =====
+
+async function loadStorefrontPayments(guildId) {
+    const box = $('#sfPayOverview');
+    if (!box) return;
+    try {
+        const payload = await api(`/api/storefront/${guildId}?preview=1`);
+        const pay = payload.payments || {};
+        const pills = [
+            pill('💳 Card / Apple Pay', pay.card),
+            pill('💸 PayPal F&F', pay.paypal),
+            ...(pay.coins || []).map(sym => pill('₿ ' + sym, true))
+        ];
+        if (!(pay.coins || []).length) pills.push(pill('₿ Crypto', false));
+        box.innerHTML = pills.join('');
+    } catch (e) {
+        box.innerHTML = '<span class="muted">Could not load payment methods.</span>';
+    }
+    function pill(label, on) {
+        return `<span class="sf-pay-pill ${on ? 'on' : ''}">${on ? '✓' : '—'} ${label}</span>`;
+    }
+}
+
+function updateStorefrontLink() {
+    const guildId = $('#sfGuildSelect').value;
+    const slug = ($('#sfSlug').value || '').trim().toLowerCase();
+    const path = slug ? `/${slug}` : `/s/${guildId}`;
+    const url = `${location.origin}${path}`;
+    $('#sfPublicLink').textContent = url;
+    $('#sfPublicLink').href = url;
+    $('#sfPreviewBtn').href = url;
+}
+
+function collectStorefront() {
+    return {
+        enabled: $('#sfEnabled').checked,
+        slug: $('#sfSlug').value,
+        displayName: $('#sfDisplayName').value,
+        tagline: $('#sfTagline').value,
+        accentColor: $('#sfAccent').value,
+        accent2Color: $('#sfAccent2').value,
+        template: document.querySelector('#sfTplGrid .sf-tpl-card.active')?.dataset.tpl || 'classic',
+        theme: $('#sfTheme').value,
+        font: $('#sfFont').value,
+        bannerText: $('#sfBannerText').value,
+        footerText: $('#sfFooterText').value,
+        coverUrl: $('#sfCoverUrl').value,
+        avatarUrl: $('#sfAvatarUrl').value,
+        discordInvite: $('#sfDiscordInvite').value,
+        website: $('#sfWebsite').value,
+        twitter: $('#sfTwitter').value,
+        youtube: $('#sfYoutube').value,
+        tiktok: $('#sfTiktok').value,
+        telegram: $('#sfTelegram').value,
+        instagram: $('#sfInstagram').value,
+        aboutText: $('#sfAboutText').value,
+        faqJson: JSON.stringify(collectFaq()),
+        customTabsJson: JSON.stringify(collectCustomTabs()),
+        designJson: collectStorefrontDesign(),
+        showReviews: $('#sfShowReviews').checked,
+        showAbout: $('#sfShowAbout').checked,
+        showFaq: $('#sfShowFaq').checked,
+        showStats: $('#sfShowStats').checked,
+        showPayments: $('#sfShowPayments').checked
+    };
+}
+
+async function saveStorefront() {
+    const guildId = $('#sfGuildSelect').value;
+    if (!guildId) { toast('Add the bot to a server first.', true); return; }
+    try {
+        const c = await api(`${apiScope()}/storefront/${guildId}`, { method: 'PUT', body: collectStorefront() });
+        $('#sfSlug').value = c.slug || '';   // serverseitig normalisiert
+        updateStorefrontLink();
+        toast($('#sfEnabled').checked ? 'Storefront saved & published' : 'Storefront saved (unpublished)');
+        refreshStorefrontPreview();
+    } catch (e) { toast(e.message, true); }
+}
+
+function refreshStorefrontPreview() {
+    const guildId = $('#sfGuildSelect').value;
+    const frame = $('#sfPreviewFrame');
+    if (frame && guildId) frame.src = `/s/${guildId}?t=${Date.now()}`;
 }
 
 // ===== Emoji picker (server custom emojis + common Unicode picks) =====

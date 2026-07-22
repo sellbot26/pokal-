@@ -100,6 +100,27 @@ public class PaymentService {
         this.planService = planService;
     }
 
+    /**
+     * Zahlungsmethoden, die für diesen Verkäufer tatsächlich konfiguriert sind — dieselbe Logik
+     * wie im Discord-Checkout: Karte (PayGate), PayPal F&F und alle Coins mit hinterlegter Wallet
+     * (eigene Wallet des Verkäufers oder Site-Fallback). Für Web-Checkout und Storefront.
+     */
+    public Map<String, Object> availableMethodsFor(ShopUser merchant) {
+        PaymentProvider payGate = providers.get("paygate");
+        PaymentProvider payPal = providers.get("paypalff");
+        PaymentProvider direct = providers.get("direct");
+        boolean card = payGate instanceof PayGateProvider pg && pg.isConfiguredFor(merchant);
+        boolean paypal = payPal instanceof PayPalFriendsProvider pp && pp.isConfiguredFor(merchant);
+        List<String> coins = direct instanceof DirectCryptoProvider dc
+                ? CryptoWallets.SYMBOLS.stream().filter(s -> dc.isCoinConfiguredFor(s, merchant)).toList()
+                : List.of();
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("card", card);
+        out.put("paypal", paypal);
+        out.put("coins", coins);
+        return out;
+    }
+
     /** Verkäufer des bestellten Produkts — bestimmt, auf wessen Wallet/Konto die Zahlung läuft. */
     public ShopUser merchantFor(Order order) {
         return productRepo.findById(order.getProductId())

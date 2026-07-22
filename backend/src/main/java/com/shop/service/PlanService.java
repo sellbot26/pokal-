@@ -52,9 +52,9 @@ public class PlanService {
     }
 
     private static final Map<String, Tier> TIERS = new LinkedHashMap<>() {{
-        put("FREE", new Tier("FREE", "Free", BigDecimal.ZERO, BigDecimal.ZERO, 5, 3,
+        put("FREE", new Tier("FREE", "Free", BigDecimal.ZERO, BigDecimal.ZERO, 3, 3,
                 "Forever free · no card required", false, List.of(
-                "Up to 5 products (unlimited variants)", "All payment providers",
+                "Up to 3 products", "All payment providers",
                 "Full analytics + audit log", "Editable delivery message")));
         put("PRO", new Tier("PRO", "Pro", new BigDecimal("9.99"), new BigDecimal("99.00"), 50, 20,
                 "€9.99/mo · or €99/yr (save ~17%)", true, List.of(

@@ -71,6 +71,12 @@ public class DirectCryptoProvider implements PaymentProvider {
         return new CreatedPayment("DIRECT-" + UUID.randomUUID(), wallet, amount);
     }
 
+    /** Ist für diesen Coin eine Wallet hinterlegt (eigene des Verkäufers oder Site-Fallback)? */
+    public boolean isCoinConfiguredFor(String symbol, ShopUser merchant) {
+        String wallet = resolveWallet(symbol, merchant);
+        return wallet != null && !wallet.isBlank();
+    }
+
     /** Wallet des Verkäufers (Zeilenformat "BTC: bc1…"), sonst Site-Wallet aus den Settings. */
     private String resolveWallet(String symbol, ShopUser merchant) {
         if (merchant != null) {

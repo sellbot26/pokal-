@@ -70,22 +70,38 @@ public class TicketService {
 
     // ===================== Ticket öffnen =====================
 
-    /**
-     * Öffnet ein Ticket für den Nutzer. Antworten laufen über die Callbacks, damit
-     * Slash-Command und Panel-Button denselben Code nutzen können.
-     */
-    public void open(Guild guild, User user, Consumer<String> onSuccess, Consumer<String> onError) {
+    /** Prüft das Offen-Limit des Nutzers. Liefert eine Fehlermeldung oder null, wenn er öffnen darf. */
+    public String openLimitError(Guild guild, User user) {
         TicketConfig cfg = configFor(guild.getId());
-
         int limit = cfg.getMaxOpenPerUser();
         if (limit > 0) {
             long open = countOpenTickets(guild, user.getId());
             if (open >= limit) {
-                onError.accept(limit == 1
+                return limit == 1
                         ? "You already have an open ticket — please use that one."
-                        : "You already have " + open + " open tickets (limit: " + limit + ").");
-                return;
+                        : "You already have " + open + " open tickets (limit: " + limit + ").";
             }
+        }
+        return null;
+    }
+
+    public void open(Guild guild, User user, Consumer<String> onSuccess, Consumer<String> onError) {
+        open(guild, user, null, null, onSuccess, onError);
+    }
+
+    /**
+     * Öffnet ein Ticket für den Nutzer. Antworten laufen über die Callbacks, damit
+     * Slash-Command und Panel-Button denselben Code nutzen können.
+     * Reason/Details kommen aus dem Ticket-Modal und landen im Welcome-Embed.
+     */
+    public void open(Guild guild, User user, String reason, String details,
+                     Consumer<String> onSuccess, Consumer<String> onError) {
+        TicketConfig cfg = configFor(guild.getId());
+
+        String limitError = openLimitError(guild, user);
+        if (limitError != null) {
+            onError.accept(limitError);
+            return;
         }
 
         String prefix = isBlank(cfg.getNamePrefix()) ? "ticket" : cfg.getNamePrefix().toLowerCase()
@@ -94,9 +110,14 @@ public class TicketService {
         String cleaned = prefix + "-" + user.getName().toLowerCase().replaceAll("[^a-z0-9]", "");
         String channelName = cleaned.substring(0, Math.min(90, cleaned.length()));
 
-        var action = guild.createTextChannel(channelName)
-                // Marker im Topic: daran werden offene Tickets + Ersteller erkannt (übersteht Neustarts)
-                .setTopic("🎫 Ticket • uid:" + user.getId() + " • opened " + TS.format(Instant.now()));
+        // Marker im Topic: daran werden offene Tickets + Ersteller erkannt (übersteht Neustarts)
+        String topic = "🎫 Ticket • uid:" + user.getId() + " • opened " + TS.format(Instant.now());
+        if (!isBlank(reason)) {
+            String shortReason = reason.trim().replaceAll("\\s+", " ");
+            if (shortReason.length() > 60) shortReason = shortReason.substring(0, 60) + "…";
+            topic += " • " + shortReason;
+        }
+        var action = guild.createTextChannel(channelName).setTopic(topic);
 
         if (!isBlank(cfg.getCategoryId())) {
             Category category = guild.getCategoryById(cfg.getCategoryId().trim());
@@ -124,15 +145,23 @@ public class TicketService {
         String message = isBlank(cfg.getWelcomeMessage())
                 ? "Describe your issue — the team will get back to you as soon as possible."
                 : cfg.getWelcomeMessage();
-        MessageEmbed welcome = new EmbedBuilder()
+        EmbedBuilder welcomeBuilder = new EmbedBuilder()
                 .setColor(panelColor(cfg))
                 .setTitle(title)
                 .setDescription(message
                         .replace("{user}", user.getAsMention())
                         .replace("{server}", guild.getName()))
                 .setFooter(settings.brandName())
-                .setTimestamp(Instant.now())
-                .build();
+                .setTimestamp(Instant.now());
+        if (!isBlank(reason)) {
+            welcomeBuilder.addField("📌 Reason", reason.trim(), false);
+        }
+        if (!isBlank(details)) {
+            String text = details.trim();
+            if (text.length() > 1000) text = text.substring(0, 1000) + "…";
+            welcomeBuilder.addField("📝 Message", text, false);
+        }
+        MessageEmbed welcome = welcomeBuilder.build();
 
         final String mentions = mention.toString();
         action.queue(channel -> {

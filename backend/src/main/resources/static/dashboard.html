@@ -24,13 +24,18 @@
         <select id="guildSwitcher" class="input guild-switcher" hidden></select>
 
         <nav id="nav">
+            <div class="nav-label">Shop</div>
             <button data-section="overview" class="nav-btn"><span class="nav-icon" data-icon="grid"></span> Overview</button>
             <button data-section="products" class="nav-btn"><span class="nav-icon" data-icon="box"></span> Products</button>
             <button data-section="stock" class="nav-btn"><span class="nav-icon" data-icon="archive"></span> Stock</button>
             <button data-section="orders" class="nav-btn"><span class="nav-icon" data-icon="file-text"></span> Orders</button>
             <button data-section="customers" class="nav-btn"><span class="nav-icon" data-icon="users"></span> Customers</button>
+            <div class="nav-label">Engage</div>
             <button data-section="embeds" class="nav-btn"><span class="nav-icon" data-icon="message-square"></span> Embed Builder</button>
             <button data-section="tickets" class="nav-btn"><span class="nav-icon" data-icon="tag"></span> Tickets</button>
+            <button data-section="giveaways" class="nav-btn"><span class="nav-icon" data-icon="award"></span> Giveaways</button>
+            <button data-section="storefront" class="nav-btn admin-only"><span class="nav-icon" data-icon="grid"></span> Storefront</button>
+            <div class="nav-label">Account</div>
             <button data-section="server" class="nav-btn"><span class="nav-icon" data-icon="server"></span> Bot &amp; Servers</button>
             <button data-section="myorders" class="nav-btn"><span class="nav-icon" data-icon="shopping-bag"></span> My Orders</button>
         </nav>
@@ -38,7 +43,7 @@
         <div class="sidebar-foot">
             <button class="plan-chip" id="planChip" onclick="showSection('billing')">
                 <span class="plan-chip-badge" id="planChipBadge">FREE</span>
-                <span class="plan-chip-usage" id="planChipUsage">0 / 5 products</span>
+                <span class="plan-chip-usage" id="planChipUsage">&nbsp;</span>
                 <span class="plan-chip-arrow" data-icon="chevron-right"></span>
             </button>
             <div class="user-card">
@@ -330,7 +335,8 @@
                         <h3>Message inside the ticket</h3>
                         <label>Title <input class="input" id="tWelcomeTitle" maxlength="256" placeholder="🎫 Support Ticket"></label>
                         <label>Message <textarea class="input" id="tWelcomeMessage" rows="3" maxlength="2000" placeholder="Describe your issue — the team will get back to you as soon as possible."></textarea></label>
-                        <small class="muted">Placeholders: <code>{user}</code> = mention of the ticket opener, <code>{server}</code> = server name.</small>
+                        <small class="muted">Placeholders: <code>{user}</code> = mention of the ticket opener, <code>{server}</code> = server name.
+                            Before the ticket opens, the bot asks the customer for a <b>reason and description</b> — both are shown in this message automatically.</small>
                     </div>
 
                     <div class="panel">
@@ -369,6 +375,430 @@
                             <div class="d-buttons" id="tPreviewButton"></div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== Giveaways ===== -->
+        <section id="section-giveaways" class="section" hidden>
+            <div class="section-head">
+                <h2>Giveaways</h2>
+                <div class="row">
+                    <select class="input" id="gwGuildSelect" style="width:auto;min-width:200px"></select>
+                </div>
+            </div>
+
+            <div class="embed-layout">
+                <div>
+                    <div class="panel">
+                        <h3>New Giveaway</h3>
+                        <p class="muted" style="margin-bottom:10px">The bot posts an embed with an <b>Enter</b> button. When the timer runs out, winners are drawn automatically.</p>
+                        <label>Prize <input class="input" id="gwPrize" maxlength="240" placeholder="Discord Nitro (1 month)"></label>
+                        <label>Description (optional) <textarea class="input" id="gwDescription" rows="3" maxlength="2000" placeholder="Extra details, rules, requirements…"></textarea></label>
+                        <div class="row">
+                            <label>Winners <input class="input" id="gwWinners" type="number" min="1" max="50" value="1" style="width:110px"></label>
+                            <label class="grow">Duration
+                                <select class="input" id="gwDuration">
+                                    <option value="10">10 minutes</option>
+                                    <option value="30">30 minutes</option>
+                                    <option value="60" selected>1 hour</option>
+                                    <option value="360">6 hours</option>
+                                    <option value="720">12 hours</option>
+                                    <option value="1440">1 day</option>
+                                    <option value="4320">3 days</option>
+                                    <option value="10080">1 week</option>
+                                </select>
+                            </label>
+                            <label>Color <input class="input" id="gwColor" type="color" value="#8b95ff"></label>
+                        </div>
+                        <label>Large image (optional) <input class="input" id="gwImage" placeholder="https://…"></label>
+                    </div>
+
+                    <div class="panel">
+                        <h3>Prize delivery (optional)</h3>
+                        <label>Give winners a role
+                            <select class="input" id="gwWinnerRole"><option value="">No role</option></select>
+                        </label>
+                        <label style="margin-top:10px">DM to each winner
+                            <textarea class="input" id="gwDmMessage" rows="2" maxlength="1500" placeholder="e.g. Open a ticket to claim your prize, or here's your code: …"></textarea></label>
+                        <small class="muted">Leave empty to only announce winners in the channel.</small>
+                    </div>
+
+                    <div class="panel">
+                        <h3>Post</h3>
+                        <div class="row">
+                            <select class="input grow" id="gwChannel"><option value="">Select channel…</option></select>
+                            <button class="btn btn-primary" id="gwPostBtn"><span data-icon="send"></span> Start Giveaway</button>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <div class="panel-head">
+                            <h3>Giveaways</h3>
+                            <button class="btn btn-ghost btn-sm" id="gwRefreshBtn"><span data-icon="refresh-cw"></span> Refresh</button>
+                        </div>
+                        <div id="gwList"><p class="muted">No giveaways yet.</p></div>
+                    </div>
+                </div>
+
+                <div class="embed-preview-wrap">
+                    <div class="preview-label">Live Preview</div>
+                    <div class="discord-msg">
+                        <div class="discord-avatar"><img src="/img/logo.png" alt="" style="width:22px;height:22px"></div>
+                        <div class="discord-body">
+                            <div class="discord-name"><span id="gwPreviewBotName">Pokal</span><span class="bot-tag">APP</span></div>
+                            <div class="d-embed" id="giveawayPreview"></div>
+                            <div class="d-buttons"><span class="d-btn style-success" id="gwPreviewButton">🎉 Enter</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== Storefront ===== -->
+        <section id="section-storefront" class="section" hidden>
+            <div class="section-head">
+                <h2>Storefront <span class="plan-lock" id="sfPlanLock" hidden>PRO</span></h2>
+                <div class="row">
+                    <select class="input" id="sfGuildSelect" style="width:auto;min-width:200px"></select>
+                </div>
+            </div>
+
+            <div id="sfUpgradeNotice" class="panel" hidden style="border-color:color-mix(in srgb, var(--accent) 40%, transparent)">
+                <h3>Your own public storefront — a Pro feature</h3>
+                <p class="muted" style="margin:8px 0 14px">
+                    Get a branded web shop at <code>pokal.shop/s/&lt;server&gt;</code> with your cover, avatar, bio,
+                    product grid and reviews — shareable anywhere. Upgrade to Pro to unlock it.
+                </p>
+                <button class="btn btn-primary" onclick="showSection('billing')">Upgrade to Pro</button>
+            </div>
+
+            <div id="sfEditor" class="embed-layout">
+                <div>
+                    <div class="sf-subtabs">
+                        <button class="sf-subtab active" data-sftab="general">General</button>
+                        <button class="sf-subtab" data-sftab="design">Design</button>
+                        <button class="sf-subtab" data-sftab="content">Content</button>
+                        <button class="sf-subtab" data-sftab="links">Links &amp; Social</button>
+                        <button class="sf-subtab" data-sftab="payments">Payments</button>
+                    </div>
+
+                    <!-- ===== General ===== -->
+                    <div class="sf-pane" data-sfpane="general">
+                        <div class="panel">
+                            <div class="switch-row">
+                                <div class="switch-text"><b>Publish storefront</b><span>Make your public shop page live.</span></div>
+                                <label class="switch" style="margin:0"><input type="checkbox" id="sfEnabled"><span class="slider"></span></label>
+                            </div>
+                            <label style="margin-top:14px">Custom address
+                                <div class="row" style="margin-top:4px;align-items:center;gap:4px">
+                                    <span class="muted" style="white-space:nowrap">pokal.shop/</span>
+                                    <input class="input grow" id="sfSlug" maxlength="32" placeholder="hexshop"
+                                           style="text-transform:lowercase">
+                                </div>
+                            </label>
+                            <small class="muted">Letters, numbers and hyphens (3–32). Leave empty to use the long link below.</small>
+                            <div class="row" style="margin-top:12px;align-items:center">
+                                <span class="muted">Public link:</span>
+                                <a href="#" id="sfPublicLink" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;word-break:break-all">—</a>
+                            </div>
+                        </div>
+                        <div class="panel">
+                            <h3>Identity</h3>
+                            <label>Display name <input class="input" id="sfDisplayName" maxlength="80" placeholder="NovaStore"></label>
+                            <label>Tagline / bio <textarea class="input" id="sfTagline" rows="2" maxlength="300" placeholder="Premium digital goods, instant delivery, 24/7."></textarea></label>
+                            <div class="row" style="margin-top:10px">
+                                <label class="grow">Cover image
+                                    <div class="row" style="margin-top:4px">
+                                        <input class="input grow" id="sfCoverUrl" placeholder="https://…">
+                                        <input type="file" id="sfCoverFile" accept="image/*" hidden>
+                                        <button type="button" class="btn btn-ghost" id="sfCoverUpload"><span data-icon="upload"></span> Upload</button>
+                                    </div>
+                                </label>
+                            </div>
+                            <div class="row" style="margin-top:10px">
+                                <label class="grow">Avatar / logo
+                                    <div class="row" style="margin-top:4px">
+                                        <input class="input grow" id="sfAvatarUrl" placeholder="https://… (empty = shop logo)">
+                                        <input type="file" id="sfAvatarFile" accept="image/*" hidden>
+                                        <button type="button" class="btn btn-ghost" id="sfAvatarUpload"><span data-icon="upload"></span> Upload</button>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ===== Design ===== -->
+                    <div class="sf-pane" data-sfpane="design" hidden>
+                        <div class="panel">
+                            <h3>Template</h3>
+                            <p class="muted" style="margin:4px 0 12px">Pick a base look — every template stays fully customizable.</p>
+                            <div class="sf-tpl-grid" id="sfTplGrid">
+                                <div class="sf-tpl-card active" data-tpl="classic">
+                                    <div class="sf-tpl-thumb tpl-classic"><span></span><i></i><i></i></div>
+                                    <b>Classic</b><small>Gradient cover, rounded cards</small>
+                                </div>
+                                <div class="sf-tpl-card" data-tpl="minimal">
+                                    <div class="sf-tpl-thumb tpl-minimal"><span></span><i></i><i></i></div>
+                                    <b>Minimal</b><small>Flat, calm &amp; compact</small>
+                                </div>
+                                <div class="sf-tpl-card" data-tpl="neon">
+                                    <div class="sf-tpl-thumb tpl-neon"><span></span><i></i><i></i></div>
+                                    <b>Neon</b><small>Glow effects everywhere</small>
+                                </div>
+                                <div class="sf-tpl-card" data-tpl="luxe">
+                                    <div class="sf-tpl-thumb tpl-luxe"><span></span><i></i><i></i></div>
+                                    <b>Luxe</b><small>Sharp, elegant, uppercase</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="panel">
+                            <h3>Colors &amp; type</h3>
+                            <div class="row">
+                                <label>Theme
+                                    <select class="input" id="sfTheme">
+                                        <option value="dark">Dark</option>
+                                        <option value="light">Light</option>
+                                    </select>
+                                </label>
+                                <label>Heading font
+                                    <select class="input" id="sfFont">
+                                        <option value="grotesk">Space Grotesk (default)</option>
+                                        <option value="inter">Inter</option>
+                                        <option value="serif">Playfair (serif)</option>
+                                        <option value="mono">JetBrains Mono</option>
+                                    </select>
+                                </label>
+                            </div>
+                            <div class="row" style="margin-top:10px">
+                                <label>Accent color <input class="input" id="sfAccent" type="color" value="#8b95ff"></label>
+                                <label>Second accent <input class="input" id="sfAccent2" type="color" value="#8b5cf6"></label>
+                            </div>
+                        </div>
+                        <div class="panel">
+                            <h3>Announcement banner</h3>
+                            <label>Banner text <input class="input" id="sfBannerText" maxlength="160" placeholder="🔥 Summer sale — 20% off with code SUMMER20 (empty = no banner)"></label>
+                        </div>
+                        <div class="panel">
+                            <h3>Layout</h3>
+                            <div class="row">
+                                <label>Page width
+                                    <select class="input" id="sfPageWidth">
+                                        <option value="normal">Normal (1080px)</option>
+                                        <option value="narrow">Narrow (900px)</option>
+                                        <option value="wide">Wide (1280px)</option>
+                                    </select>
+                                </label>
+                                <label>Cover height
+                                    <select class="input" id="sfCoverHeight">
+                                        <option value="normal">Normal</option>
+                                        <option value="small">Small</option>
+                                        <option value="large">Large</option>
+                                        <option value="hidden">No cover</option>
+                                    </select>
+                                </label>
+                            </div>
+                            <div class="row" style="margin-top:10px">
+                                <label>Header alignment
+                                    <select class="input" id="sfHeroAlign">
+                                        <option value="left">Left</option>
+                                        <option value="center">Centered</option>
+                                    </select>
+                                </label>
+                                <label>Avatar shape
+                                    <select class="input" id="sfAvatarShape">
+                                        <option value="rounded">Rounded</option>
+                                        <option value="circle">Circle</option>
+                                        <option value="square">Square</option>
+                                    </select>
+                                </label>
+                            </div>
+                            <div class="row" style="margin-top:10px">
+                                <label>Button style
+                                    <select class="input" id="sfBtnStyle">
+                                        <option value="">Template default</option>
+                                        <option value="pill">Pill</option>
+                                        <option value="rounded">Rounded</option>
+                                        <option value="square">Square</option>
+                                    </select>
+                                </label>
+                                <label class="grow">Corner radius <span class="muted" id="sfRadiusVal">default</span>
+                                    <input type="range" id="sfRadius" min="-1" max="28" step="1" value="-1" style="width:100%;margin-top:8px">
+                                </label>
+                            </div>
+                        </div>
+                        <div class="panel">
+                            <h3>Page layout <span class="muted" style="font-weight:400;font-size:12px">— drag to arrange</span></h3>
+                            <label style="margin-top:6px">Section order</label>
+                            <div class="sf-drag-list" id="sfSectionOrder">
+                                <div class="sf-drag-row" draggable="true" data-key="stats"><span class="grip">⠿</span> Stats row</div>
+                                <div class="sf-drag-row" draggable="true" data-key="chips"><span class="grip">⠿</span> Highlight badges</div>
+                                <div class="sf-drag-row" draggable="true" data-key="tabs"><span class="grip">⠿</span> Products &amp; tabs</div>
+                            </div>
+                            <label style="margin-top:12px">Tab order <span class="muted" style="font-weight:400">(first = opens by default)</span></label>
+                            <div class="sf-drag-list" id="sfTabOrder"></div>
+                        </div>
+                        <div class="panel">
+                            <div class="switch-row">
+                                <div class="switch-text"><b>Custom colors</b><span>Override background, panels and text — full control.</span></div>
+                                <label class="switch" style="margin:0"><input type="checkbox" id="sfColorsOn"><span class="slider"></span></label>
+                            </div>
+                            <div class="row" id="sfColorsRow" style="margin-top:12px" hidden>
+                                <label>Background <input class="input" id="sfBgColor" type="color" value="#0a0a0f"></label>
+                                <label>Panels / cards <input class="input" id="sfPanelColor" type="color" value="#14141f"></label>
+                                <label>Text <input class="input" id="sfTextColor" type="color" value="#f2f3f8"></label>
+                            </div>
+                        </div>
+                        <div class="panel">
+                            <h3>Page background image</h3>
+                            <div class="row">
+                                <input class="input grow" id="sfBgImageUrl" placeholder="https://… (empty = plain color)">
+                                <input type="file" id="sfBgImageFile" accept="image/*" hidden>
+                                <button type="button" class="btn btn-ghost" id="sfBgImageUpload"><span data-icon="upload"></span> Upload</button>
+                            </div>
+                            <label style="margin-top:10px">Darken overlay <span class="muted" id="sfBgOverlayVal">85%</span>
+                                <input type="range" id="sfBgOverlay" min="0" max="100" step="5" value="85" style="width:100%;margin-top:8px">
+                            </label>
+                            <small class="muted">Higher = darker image, better readability.</small>
+                        </div>
+                        <div class="panel">
+                            <h3>Product cards</h3>
+                            <div class="row">
+                                <label>Grid columns
+                                    <select class="input" id="sfGridCols">
+                                        <option value="auto">Auto</option>
+                                        <option value="2">2 columns</option>
+                                        <option value="3">3 columns</option>
+                                        <option value="4">4 columns</option>
+                                    </select>
+                                </label>
+                                <label class="grow">"Shop now" button text <input class="input" id="sfCtaText" maxlength="24" placeholder="Shop now"></label>
+                            </div>
+                            <div class="switch-row" style="margin-top:12px">
+                                <div class="switch-text"><b>Product descriptions</b><span>Show the short description on each card.</span></div>
+                                <label class="switch" style="margin:0"><input type="checkbox" id="sfShowDesc" checked><span class="slider"></span></label>
+                            </div>
+                            <div class="switch-row" style="margin-top:10px">
+                                <div class="switch-text"><b>Stock badges</b><span>"In stock" / "Sold out" labels on cards.</span></div>
+                                <label class="switch" style="margin:0"><input type="checkbox" id="sfShowStock" checked><span class="slider"></span></label>
+                            </div>
+                            <div class="switch-row" style="margin-top:10px">
+                                <div class="switch-text"><b>Category filter</b><span>Category pills above the product grid.</span></div>
+                                <label class="switch" style="margin:0"><input type="checkbox" id="sfShowCats" checked><span class="slider"></span></label>
+                            </div>
+                        </div>
+                        <div class="panel">
+                            <h3>Highlight badges</h3>
+                            <p class="muted" style="margin:4px 0 8px">Your own badges under the stats (one per line, empty = default "Instant delivery"). Payment badges are added automatically.</p>
+                            <textarea class="input" id="sfChipsText" rows="3" maxlength="400" placeholder="⚡ Instant delivery&#10;🛡️ Warranty on everything&#10;🏆 500+ vouches"></textarea>
+                        </div>
+                        <div class="panel">
+                            <h3>Custom CSS <span class="muted" style="font-weight:400;font-size:12px">— advanced</span></h3>
+                            <p class="muted" style="margin:4px 0 8px">Full control: your CSS is injected last and can restyle anything. Classes are prefixed <code>sf-</code> (e.g. <code>.sf-card</code>, <code>.sf-name</code>, <code>.sf-buy</code>).</p>
+                            <textarea class="input" id="sfCustomCss" rows="6" maxlength="10000" spellcheck="false" style="font-family:ui-monospace,monospace;font-size:12.5px" placeholder=".sf-card { border: 2px solid gold; }&#10;.sf-name { text-transform: uppercase; }"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- ===== Content ===== -->
+                    <div class="sf-pane" data-sfpane="content" hidden>
+                        <div class="panel">
+                            <h3>About</h3>
+                            <label>About text <textarea class="input" id="sfAboutText" rows="4" maxlength="3000" placeholder="Tell buyers who you are, your warranty, how delivery works…"></textarea></label>
+                        </div>
+                        <div class="panel">
+                            <div class="panel-head">
+                                <h3>FAQ</h3>
+                                <button type="button" class="btn btn-ghost btn-sm" id="sfFaqAdd"><span data-icon="plus"></span> Add question</button>
+                            </div>
+                            <p class="muted" style="margin:0 0 10px">Shown as an accordion in its own FAQ tab.</p>
+                            <div id="sfFaqEditor"></div>
+                        </div>
+                        <div class="panel">
+                            <div class="panel-head">
+                                <h3>Custom tabs</h3>
+                                <button type="button" class="btn btn-ghost btn-sm" id="sfTabAdd"><span data-icon="plus"></span> Add tab</button>
+                            </div>
+                            <p class="muted" style="margin:0 0 10px">Up to 4 extra tabs with your own title and text (e.g. Warranty, Vouches, Rules).</p>
+                            <div id="sfTabsEditor"></div>
+                        </div>
+                        <div class="panel">
+                            <h3>Sections</h3>
+                            <div class="switch-row">
+                                <div class="switch-text"><b>Stats row</b><span>Products / sales / rating tiles under the header.</span></div>
+                                <label class="switch" style="margin:0"><input type="checkbox" id="sfShowStats" checked><span class="slider"></span></label>
+                            </div>
+                            <div class="switch-row" style="margin-top:10px">
+                                <div class="switch-text"><b>Reviews tab</b><span>Display your buyer reviews publicly.</span></div>
+                                <label class="switch" style="margin:0"><input type="checkbox" id="sfShowReviews" checked><span class="slider"></span></label>
+                            </div>
+                            <div class="switch-row" style="margin-top:10px">
+                                <div class="switch-text"><b>About tab</b><span>Display the About text as a tab.</span></div>
+                                <label class="switch" style="margin:0"><input type="checkbox" id="sfShowAbout" checked><span class="slider"></span></label>
+                            </div>
+                            <div class="switch-row" style="margin-top:10px">
+                                <div class="switch-text"><b>FAQ tab</b><span>Display the FAQ accordion as a tab.</span></div>
+                                <label class="switch" style="margin:0"><input type="checkbox" id="sfShowFaq" checked><span class="slider"></span></label>
+                            </div>
+                            <label style="margin-top:12px">Footer text <input class="input" id="sfFooterText" maxlength="200" placeholder="Extra line above “Powered by Pokal” (optional)"></label>
+                        </div>
+                    </div>
+
+                    <!-- ===== Links & Social ===== -->
+                    <div class="sf-pane" data-sfpane="links" hidden>
+                        <div class="panel">
+                            <h3>Links</h3>
+                            <div class="row">
+                                <label class="grow">Discord invite <input class="input" id="sfDiscordInvite" placeholder="https://discord.gg/…"></label>
+                                <label class="grow">Website <input class="input" id="sfWebsite" placeholder="https://…"></label>
+                            </div>
+                        </div>
+                        <div class="panel">
+                            <h3>Social profiles</h3>
+                            <p class="muted" style="margin:4px 0 10px">Shown as icons under your shop name. Full URLs.</p>
+                            <div class="row">
+                                <label class="grow">X / Twitter <input class="input" id="sfTwitter" placeholder="https://x.com/…"></label>
+                                <label class="grow">YouTube <input class="input" id="sfYoutube" placeholder="https://youtube.com/@…"></label>
+                            </div>
+                            <div class="row" style="margin-top:10px">
+                                <label class="grow">TikTok <input class="input" id="sfTiktok" placeholder="https://tiktok.com/@…"></label>
+                                <label class="grow">Telegram <input class="input" id="sfTelegram" placeholder="https://t.me/…"></label>
+                            </div>
+                            <div class="row" style="margin-top:10px">
+                                <label class="grow">Instagram <input class="input" id="sfInstagram" placeholder="https://instagram.com/…"></label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ===== Payments ===== -->
+                    <div class="sf-pane" data-sfpane="payments" hidden>
+                        <div class="panel">
+                            <h3>Checkout on your storefront</h3>
+                            <p class="muted" style="margin:4px 0 12px">
+                                Buyers can pay directly on your storefront page — with exactly the same methods
+                                your Discord checkout offers. Configure them once in
+                                <a href="#" onclick="showSection('settings');return false" style="color:var(--accent);font-weight:600">Settings → Payments</a>.
+                            </p>
+                            <div id="sfPayOverview" class="sf-pay-overview"><span class="muted">Loading…</span></div>
+                            <div class="switch-row" style="margin-top:14px">
+                                <div class="switch-text"><b>Payment badges</b><span>Show the accepted-payments chips on the page.</span></div>
+                                <label class="switch" style="margin:0"><input type="checkbox" id="sfShowPayments" checked><span class="slider"></span></label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <div class="row">
+                            <button class="btn btn-primary" id="sfSaveBtn"><span data-icon="save"></span> Save storefront</button>
+                            <a class="btn btn-ghost" id="sfPreviewBtn" href="#" target="_blank" rel="noopener"><span data-icon="external-link"></span> Open preview</a>
+                        </div>
+                        <small class="muted">Product images are set per product in the Products section (upload there).</small>
+                    </div>
+                </div>
+
+                <div class="embed-preview-wrap">
+                    <div class="preview-label">Live Preview</div>
+                    <iframe id="sfPreviewFrame" title="Storefront preview"
+                            style="width:100%;height:640px;border:1px solid var(--border);border-radius:12px;background:var(--bg)"></iframe>
                 </div>
             </div>
         </section>

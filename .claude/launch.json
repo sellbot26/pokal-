@@ -1,0 +1,24 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "shop",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "C:\\Users\\xrsel\\Desktop\\bot golf\\start.bat"],
+      "port": 8080
+    },
+    {
+      "name": "dashpreview",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["C:\\Users\\xrsel\\AppData\\Local\\Temp\\claude\\C--Users-xrsel-Desktop-bot-golf\\f4f666ad-7d0e-4f03-a75c-cf540d80f210\\scratchpad\\dashpreview\\server.mjs"],
+      "port": 8090
+    },
+    {
+      "name": "silent-link",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "C:\\Users\\xrsel\\Desktop\\Neuer Ordner\\silent-link",
+      "port": 5188
+    }
+  ]
+}

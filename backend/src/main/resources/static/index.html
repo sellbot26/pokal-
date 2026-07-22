@@ -17,11 +17,16 @@
         <img src="/img/logo.png" alt="" class="landing-logo-icon">
         <span id="navBrandName">Pokal</span>
     </div>
+    <div class="landing-nav-links">
+        <a href="#features">Features</a>
+        <a href="#how">How it works</a>
+        <a href="#plans">Pricing</a>
+    </div>
     <a class="btn btn-primary" href="/oauth2/authorization/discord">Enter Panel</a>
 </nav>
 
 <header class="hero">
-    <div class="hero-badge">Discord Commerce Platform</div>
+    <div class="hero-badge"><i class="dot"></i> <b>Discord Commerce</b> &nbsp;·&nbsp; Sell, deliver &amp; get paid on autopilot</div>
     <h1 id="heroTitle">Sell on Discord.<br><span class="grad">Automate everything.</span></h1>
     <p class="hero-sub" id="heroSub">
         Products, stock, crypto &amp; card payments, license keys, embeds and automated delivery —
@@ -37,6 +42,7 @@
             </svg>
             Enter Panel
         </a>
+        <a class="btn btn-ghost btn-lg" href="#features">See what's inside</a>
     </div>
     <div class="hero-trust">
         <span><i class="dot"></i> Automated delivery</span>
@@ -48,49 +54,87 @@
     </div>
 </header>
 
-<!-- Dashboard-Preview (CSS-Mockup) -->
-<div class="hero-preview-wrap">
-    <div class="hero-preview">
-        <aside class="hp-side">
-            <div class="hp-brand"><img src="/img/logo.png" alt=""><b>Pokal</b></div>
-            <div class="hp-nav">
-                <span class="active">Overview</span><span>Products</span><span>Stock</span>
-                <span>Orders</span><span>Customers</span><span>Embed Builder</span>
-                <span>Payments</span><span>Settings</span>
+<!-- Dashboard-Mockup unter der Hero -->
+<div class="hero-mock-wrap" aria-hidden="true">
+    <div class="hero-mock">
+        <div class="hm-bar"><i></i><i></i><i></i><span>pokal.shop/dashboard</span></div>
+        <div class="hm-body">
+            <div class="hm-side">
+                <div class="hm-nav on"><i></i>Overview</div>
+                <div class="hm-nav"><i></i>Products</div>
+                <div class="hm-nav"><i></i>Orders</div>
+                <div class="hm-nav"><i></i>Embeds</div>
+                <div class="hm-nav"><i></i>Payments</div>
+                <div class="hm-nav"><i></i>Storefront</div>
             </div>
-            <div class="hp-plan">PRO · 12 / 50 products</div>
-        </aside>
-        <div class="hp-main">
-            <div class="hp-head">
-                <div><b>Overview</b><small>Welcome back to your dashboard</small></div>
-                <span class="hp-user">Pokal Seller <i></i></span>
-            </div>
-            <div class="hp-stats">
-                <div class="hp-stat"><small>Total Revenue</small><b class="acc">€1,849.98</b><em>▲ 86.6%</em></div>
-                <div class="hp-stat"><small>Total Orders</small><b>52</b><em>▲ 76.9%</em></div>
-                <div class="hp-stat"><small>New Customers</small><b>34</b><em>▲ 54.5%</em></div>
-            </div>
-            <div class="hp-chart">
-                <small>Revenue &amp; Orders</small>
-                <svg viewBox="0 0 560 150" preserveAspectRatio="none" aria-hidden="true">
-                    <defs>
-                        <linearGradient id="hpFill" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0" stop-color="#8b95ff" stop-opacity="0.28"/>
-                            <stop offset="1" stop-color="#8b95ff" stop-opacity="0"/>
-                        </linearGradient>
-                    </defs>
-                    <path d="M0,135 L40,128 L80,132 L110,60 L130,110 L170,125 L210,90 L250,118 L290,40 L320,105 L360,95 L400,120 L440,70 L480,100 L520,25 L560,80 L560,150 L0,150 Z" fill="url(#hpFill)"/>
-                    <path d="M0,135 L40,128 L80,132 L110,60 L130,110 L170,125 L210,90 L250,118 L290,40 L320,105 L360,95 L400,120 L440,70 L480,100 L520,25 L560,80" fill="none" stroke="#8b95ff" stroke-width="2.5" stroke-linejoin="round"/>
-                </svg>
-            </div>
-            <div class="hp-rows">
-                <div><span>Discord Nitro x1</span><span class="hp-badge ok">Delivered</span><b>€18.88</b></div>
-                <div><span>License Key — Pro Tool</span><span class="hp-badge ok">Delivered</span><b>€49.00</b></div>
-                <div><span>VIP Role x1</span><span class="hp-badge wait">Pending</span><b>€9.99</b></div>
+            <div class="hm-main">
+                <div class="hm-title">Overview</div>
+                <div class="hm-stats">
+                    <div class="hm-stat"><small>Revenue</small><b>&euro;4,820</b><em>+18% this month</em></div>
+                    <div class="hm-stat"><small>Orders</small><b>312</b><em>+24 today</em></div>
+                    <div class="hm-stat"><small>Delivered</small><b>100%</b><em>fully automated</em></div>
+                </div>
+                <div class="hm-chart">
+                    <i style="height:24%"></i><i style="height:38%"></i><i style="height:30%"></i>
+                    <i style="height:52%"></i><i style="height:44%"></i><i style="height:66%"></i>
+                    <i style="height:58%"></i><i style="height:74%"></i><i style="height:62%"></i>
+                    <i style="height:86%"></i><i style="height:78%"></i><i style="height:100%"></i>
+                </div>
             </div>
         </div>
     </div>
+    <div class="hm-float hm-float-1"><i class="dot"></i> Payment received <small>&euro;49.99 · PayPal F&amp;F</small></div>
+    <div class="hm-float hm-float-2"><i class="dot"></i> Delivered <small>license key · 2s</small></div>
 </div>
+
+<!-- Payment-Marquee -->
+<div class="pay-marquee" aria-hidden="true">
+    <div class="pay-track" id="payTrack"></div>
+</div>
+
+<section class="section-wrap" style="padding-top:34px;padding-bottom:0">
+    <div class="lp-stats">
+        <div class="lp-stat"><b>13</b><span>Payment methods</span></div>
+        <div class="lp-stat"><b>5</b><span>Delivery types</span></div>
+        <div class="lp-stat"><b>Instant</b><span>Auto-delivery</span></div>
+        <div class="lp-stat"><b>No&nbsp;code</b><span>Fully white-label</span></div>
+    </div>
+</section>
+
+<section class="section-wrap" id="features">
+    <div class="section-heading">
+        <span class="eyebrow">Platform</span>
+        <h2>Everything your shop needs</h2>
+        <p class="muted">Run the entire storefront from one dashboard — no code required.</p>
+    </div>
+    <div class="bento" id="bentoGrid"></div>
+
+    <div class="more-heading">Plus everything else, included</div>
+    <div class="more-list" id="moreList"></div>
+</section>
+
+<section class="section-wrap" id="payments" style="padding-top:10px">
+    <div class="feature-hero">
+        <div class="fh-text">
+            <span class="fh-eyebrow">Payments · Auto-delivery</span>
+            <h3>Get paid any way — delivered in seconds</h3>
+            <p>Accept crypto, card, Apple Pay and PayPal Friends &amp; Family. Every payment is detected automatically and the buyer's role, key, text or file is delivered instantly. No clicking, no waiting.</p>
+            <div class="fh-chips">
+                <span class="fh-chip">PayPal F&amp;F</span><span class="fh-chip">Card</span><span class="fh-chip">Apple Pay</span>
+                <span class="fh-chip">BTC</span><span class="fh-chip">ETH</span><span class="fh-chip">LTC</span>
+                <span class="fh-chip">USDT</span><span class="fh-chip">SOL</span><span class="fh-chip">+5 more</span>
+            </div>
+        </div>
+        <div class="fh-visual">
+            <div class="fh-row"><span>PayPal F&amp;F</span><span class="fh-tag">Delivered</span></div>
+            <div class="fh-row"><span>Bitcoin</span><span class="fh-tag">Delivered</span></div>
+            <div class="fh-row"><span>Card · Apple Pay</span><span class="fh-tag">Delivered</span></div>
+        </div>
+    </div>
+
+    <div class="more-heading" style="margin-top:38px">Your buyers never leave Discord</div>
+    <ul class="spec-list" id="cmdGrid"></ul>
+</section>
 
 <section class="section-wrap" id="how">
     <div class="section-heading">
@@ -114,46 +158,6 @@
             <h3>Get paid automatically</h3>
             <p>Buyers pay by crypto, card or PayPal F&amp;F — delivery fires the second payment lands.</p>
         </div>
-    </div>
-</section>
-
-<section class="section-wrap" id="features">
-    <div class="section-heading">
-        <span class="eyebrow">Platform</span>
-        <h2>Everything your shop needs</h2>
-        <p class="muted">Run the entire storefront from one dashboard — no code required.</p>
-    </div>
-
-    <div class="feature-hero">
-        <div class="fh-text">
-            <span class="fh-eyebrow">Payments · Auto-delivery</span>
-            <h3>Get paid any way — delivered in seconds</h3>
-            <p>Accept crypto, card, Apple Pay and PayPal Friends &amp; Family. Every payment is detected automatically and the buyer's role, key, text or file is delivered instantly. No clicking, no waiting.</p>
-            <div class="fh-chips">
-                <span class="fh-chip">PayPal F&amp;F</span><span class="fh-chip">Card</span><span class="fh-chip">Apple Pay</span>
-                <span class="fh-chip">BTC</span><span class="fh-chip">ETH</span><span class="fh-chip">LTC</span>
-                <span class="fh-chip">USDT</span><span class="fh-chip">SOL</span><span class="fh-chip">+5 more</span>
-            </div>
-        </div>
-        <div class="fh-visual">
-            <div class="fh-row"><span>PayPal F&amp;F</span><span class="fh-tag">Delivered</span></div>
-            <div class="fh-row"><span>Bitcoin</span><span class="fh-tag">Delivered</span></div>
-            <div class="fh-row"><span>Card · Apple Pay</span><span class="fh-tag">Delivered</span></div>
-        </div>
-    </div>
-
-    <div class="feature-grid" id="featureGrid"></div>
-
-    <div class="more-heading">Plus everything else, included</div>
-    <div class="more-list" id="moreList"></div>
-</section>
-
-<section class="section-wrap" style="padding-top:0">
-    <div class="lp-stats">
-        <div class="lp-stat"><b>13</b><span>Payment methods</span></div>
-        <div class="lp-stat"><b>Instant</b><span>Auto-delivery</span></div>
-        <div class="lp-stat"><b>0%</b><span>Fees on PayPal F&amp;F</span></div>
-        <div class="lp-stat"><b>No&nbsp;code</b><span>Fully white-label</span></div>
     </div>
 </section>
 
@@ -193,34 +197,70 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     document.getElementById('footerYear').textContent = new Date().getFullYear();
 
+    // Bento-Grid: 8 Karten — 2 breite oben (je 3 Spalten), 6 normale (je 2) darunter
     const FEATURES = [
-        ['box', 'Product Manager', 'Products with images, categories, variants and multiple delivery types — full control, no code.'],
-        ['archive', 'Stock & License Keys', 'Track stock, get low/out-of-stock warnings and bulk-restock license keys instantly.'],
-        ['message-square', 'Embed Builder', 'Design Discord embeds with a live preview and attach working Buy buttons in a click.'],
+        ['box', 'Product Manager', 'Products with images, categories and five delivery types — role, key, account, text or file. Full control, no code.', 'wide', ['Discord Role', 'License Key', 'Account / Serial', 'Text', 'File']],
+        ['message-square', 'Embed Builder', 'Design Discord embeds with a live preview and attach working Buy buttons in a click.', 'wide', ['Live preview', 'Buy buttons', 'Custom fields']],
+        ['archive', 'Stock & License Keys', 'Track stock, get low-stock warnings and bulk-restock license keys instantly.'],
         ['grid', 'Live Analytics', 'Revenue charts, order stats, monthly goals and top products — updated in real time.'],
         ['server', 'Discord Bot & /shop', 'Buyers browse and check out right inside Discord with slash commands — no website needed.'],
-        ['users', 'Customer Management', 'Order history, ban / unban and a spending overview for every customer.']
+        ['users', 'Customer Management', 'Order history, ban / unban, spending overview — plus DM broadcasts to all your buyers at once.'],
+        ['star', 'Reviews & Vouches', 'After delivery the bot asks for a rating and posts it straight to your review channel.'],
+        ['life-buoy', 'Ticket System', 'Build a support panel, set roles and limits, and close tickets with a transcript.']
     ];
-    document.getElementById('featureGrid').innerHTML = FEATURES.map(([icon, title, desc]) => `
-        <div class="feature-card">
-            <div class="feature-icon">${ICON_PATHS[icon] ? svgIcon(icon) : ''}</div>
+    document.getElementById('bentoGrid').innerHTML = FEATURES.map(([icon, title, desc, size, chips]) => `
+        <div class="bento-card${size === 'wide' ? ' wide' : ''}">
+            <div class="bento-icon">${svgIcon(icon)}</div>
             <h3>${title}</h3>
-            <p class="muted">${desc}</p>
+            <p>${desc}</p>
+            ${chips ? `<div class="bento-chips">${chips.map(c => `<span class="bento-chip">${c}</span>`).join('')}</div>` : ''}
         </div>`).join('');
 
+    const COMMANDS = [
+        ['/shop', 'Browse the shop with all categories.'],
+        ['/product', 'See the details for a single product.'],
+        ['/buy', 'Buy a product with crypto, card or PayPal.'],
+        ['/orders', 'Look up your own order history.'],
+        ['/review', 'Leave a review for something you bought.'],
+        ['/ticket', 'Open a support ticket.'],
+        ['/admin', 'Shop management — staff only.']
+    ];
+    document.getElementById('cmdGrid').innerHTML = COMMANDS.map(([cmd, desc]) => `
+        <li>${svgIcon('check-circle')}<div><code>${cmd}</code> <span>— ${desc}</span></div></li>`).join('');
+
     const MORE = [
-        'Flexible delivery — role, key, text or file',
         'Discount coupons with limits & expiry',
-        'Reviews & vouches',
         'Auto-role on join',
+        'Low & out-of-stock warnings',
+        'Bulk license-key restock',
         'Sale logs & Discord webhooks',
+        'Ticket transcripts',
+        'Customer ban / unban',
         'Multi-server support',
         'CSV export for bookkeeping',
+        'Live embed preview',
+        'Editable delivery messages',
+        'Monthly revenue goals',
+        'Unique payment amounts',
         'Full white-label branding',
         'Maintenance mode'
     ];
     document.getElementById('moreList').innerHTML = MORE.map(item => `
         <div class="more-item">${svgIcon('check-circle')}<span>${item}</span></div>`).join('');
+
+    // Payment-Marquee: Liste doppelt rendern für die Endlos-Schleife
+    const PAY = ['PayPal F&F', 'Card', 'Apple Pay', 'Bitcoin', 'Ethereum', 'Litecoin', 'Solana',
+                 'USDT', 'USDC', 'Dogecoin', 'XRP', 'Bitcoin Cash', 'Tron', 'Instant auto-delivery'];
+    const pills = PAY.map(p => `<span class="pay-pill">${svgIcon('check-circle')}<b>${p}</b></span>`).join('');
+    document.getElementById('payTrack').innerHTML = pills + pills;
+
+    // Scroll-Reveal
+    const revealTargets = document.querySelectorAll(
+        '.bento-card, .step, .plan-card, .feature-hero, .lp-stat, .section-heading, .cta-band, .spec-list li, .more-item');
+    const io = new IntersectionObserver(entries => entries.forEach(e => {
+        if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+    }), { threshold: 0.12 });
+    revealTargets.forEach(el => { el.classList.add('reveal'); io.observe(el); });
 
     function money(value) {
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR' }).format(value ?? 0);
@@ -236,10 +276,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 : `<div class="plan-price">Free</div><div class="plan-tagline">no card required</div>`;
             return `
             <div class="plan-card${p.popular ? ' popular' : ''}">
-                <h3>${p.name}</h3>
+                ${p.popular ? '<div class="plan-current-badge">Most popular</div>' : ''}
+                <h3 class="plan-card-name">${p.name}</h3>
                 ${priceHtml}
                 <ul class="plan-list">${p.features.map(f => `<li>${svgIcon('check-circle')}${f}</li>`).join('')}</ul>
-                <a class="btn btn-primary" href="/oauth2/authorization/discord" style="width:100%">
+                <a class="btn btn-primary plan-cta" href="/oauth2/authorization/discord">
                     ${monthly > 0 ? 'Sign in to upgrade' : 'Get started'}
                 </a>
             </div>`;
@@ -282,23 +323,13 @@ const ICON_PATHS = {
     'box': '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line>',
     'archive': '<polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line>',
     'message-square': '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>',
-    'dollar': '<line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>',
-    'credit-card': '<rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line>',
-    'tag': '<path d="M20.59 13.41L13.42 20.58a2 2 0 0 1-2.83 0L2.59 12.58a1.996 1.996 0 0 1-.59-1.42V4a2 2 0 0 1 2-2h7.17c.53 0 1.04.21 1.41.59l8 8a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line>',
     'server': '<rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line>',
     'users': '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>',
     'check-circle': '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline>',
-    'key': '<path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>',
-    'file-text': '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line>',
-    'download': '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line>',
-    'settings': '<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>',
-    'alert-triangle': '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>',
-    'zap': '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>',
     'star': '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>',
-    'user-plus': '<path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line>',
-    'bell': '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path>'
+    'life-buoy': '<circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="4"></circle><line x1="4.93" y1="4.93" x2="9.17" y2="9.17"></line><line x1="14.83" y1="14.83" x2="19.07" y2="19.07"></line><line x1="14.83" y1="9.17" x2="19.07" y2="4.93"></line><line x1="4.93" y1="19.07" x2="9.17" y2="14.83"></line>',
+    'send': '<line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>'
 };
 </script>
 </body>
 </html>
-

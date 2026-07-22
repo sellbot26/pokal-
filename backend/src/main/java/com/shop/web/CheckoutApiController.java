@@ -38,6 +38,7 @@ public class CheckoutApiController {
     private final PaymentService paymentService;
     private final QrService qrService;
     private final SettingsService settings;
+    private final com.shop.repo.ShopUserRepo userRepo;
 
     /**
      * Erstellt eine neue Bestellung + Zahlung für ein öffentlich verfügbares Produkt.
@@ -111,6 +112,21 @@ public class CheckoutApiController {
                 .filter(symbol -> isSet("wallet" + symbol))
                 .toList();
         return Map.of("card", card, "paypal", paypal, "coins", coins);
+    }
+
+    /**
+     * Zahlungsmethoden für EIN Produkt — bestimmt über dessen Verkäufer (eigene Wallets/Konten,
+     * Site-Konfiguration als Fallback). Exakt dieselben Methoden wie im Discord-Checkout des
+     * Verkäufers; genutzt vom Storefront-Checkout.
+     */
+    @GetMapping("/api/checkout/product/{productId}/payment-methods")
+    public Map<String, Object> productPaymentMethods(@PathVariable long productId) {
+        Product product = productRepo.findById(productId)
+                .filter(Product::isActive)
+                .orElseThrow(() -> new IllegalArgumentException("Product not found."));
+        var merchant = product.getOwnerId() == null ? null
+                : userRepo.findById(product.getOwnerId()).orElse(null);
+        return paymentService.availableMethodsFor(merchant);
     }
 
     private boolean isSet(String key) {

@@ -72,6 +72,7 @@ public class ShopCommands extends ListenerAdapter {
     private final PlanService planService;
     private final MemberJoinListener autoRole;
     private final com.shop.service.TicketService ticketService;
+    private final com.shop.service.GiveawayService giveawayService;
 
     /** true = Aktion blockiert, Antwort wurde bereits gesendet. */
     private boolean maintenanceBlocked(net.dv8tion.jda.api.interactions.callbacks.IReplyCallback event) {
@@ -296,8 +297,43 @@ public class ShopCommands extends ListenerAdapter {
             event.replyEmbeds(embeds.error("Tickets can only be opened on the server.")).setEphemeral(true).queue();
             return;
         }
+        String limitError = ticketService.openLimitError(guild, event.getUser());
+        if (limitError != null) {
+            event.replyEmbeds(embeds.error(limitError)).setEphemeral(true).queue();
+            return;
+        }
+        event.replyModal(buildTicketModal()).queue();
+    }
+
+    /** Reason + Beschreibung abfragen, bevor der Ticket-Channel entsteht. */
+    private Modal buildTicketModal() {
+        TextInput reason = TextInput.create("reason", "Reason", TextInputStyle.SHORT)
+                .setRequired(true)
+                .setMaxLength(100)
+                .setPlaceholder("e.g. Order issue, refund, general question…")
+                .build();
+        TextInput details = TextInput.create("details", "Describe your issue (optional)", TextInputStyle.PARAGRAPH)
+                .setRequired(false)
+                .setMaxLength(1000)
+                .setPlaceholder("Give the team as much detail as you can — order ID, product, what happened…")
+                .build();
+        return Modal.create("ticketmodal", "🎫 Open a Ticket")
+                .addActionRow(reason)
+                .addActionRow(details)
+                .build();
+    }
+
+    /** Ticket-Modal abgeschickt → Channel mit Reason/Beschreibung im Welcome-Embed erstellen. */
+    private void handleTicketModal(ModalInteractionEvent event) {
+        Guild guild = event.getGuild();
+        if (guild == null) {
+            event.replyEmbeds(embeds.error("Tickets can only be opened on the server.")).setEphemeral(true).queue();
+            return;
+        }
+        String reason = event.getValue("reason") != null ? event.getValue("reason").getAsString() : null;
+        String details = event.getValue("details") != null ? event.getValue("details").getAsString() : null;
         event.deferReply(true).queue();
-        ticketService.open(guild, event.getUser(),
+        ticketService.open(guild, event.getUser(), reason, details,
                 channelMention -> event.getHook().sendMessage("🎫 Your ticket has been created: " + channelMention).queue(),
                 error -> event.getHook().sendMessageEmbeds(embeds.error(error)).queue());
     }
@@ -441,15 +477,17 @@ public class ShopCommands extends ListenerAdapter {
                 }
                 showCheckout(event, product, 1, null);
             } else if (id.equals("ticket:open")) {
-                // Panel-Button: gleicher Flow wie /ticket
+                // Panel-Button: erst das Reason-Modal, das Ticket entsteht beim Submit
                 if (event.getGuild() == null) {
                     event.replyEmbeds(embeds.error("Tickets can only be opened on the server.")).setEphemeral(true).queue();
                     return;
                 }
-                event.deferReply(true).queue();
-                ticketService.open(event.getGuild(), event.getUser(),
-                        mention -> event.getHook().sendMessage("🎫 Your ticket has been created: " + mention).queue(),
-                        error -> event.getHook().sendMessageEmbeds(embeds.error(error)).queue());
+                String limitError = ticketService.openLimitError(event.getGuild(), event.getUser());
+                if (limitError != null) {
+                    event.replyEmbeds(embeds.error(limitError)).setEphemeral(true).queue();
+                    return;
+                }
+                event.replyModal(buildTicketModal()).queue();
             } else if (id.equals("ticket:close")) {
                 var channel = event.getChannel().asTextChannel();
                 // Ticket-Channels am Topic-Marker erkennen; Alt-Tickets (Name-Prefix) weiter unterstützen
@@ -462,6 +500,8 @@ public class ShopCommands extends ListenerAdapter {
             } else if (id.startsWith("rate:")) {
                 String[] parts = id.split(":");
                 handleRateButton(event, Long.parseLong(parts[1]), Integer.parseInt(parts[2]));
+            } else if (id.startsWith("gw:enter:")) {
+                handleGiveawayEnter(event, Long.parseLong(id.substring("gw:enter:".length())));
             }
         } catch (Exception e) {
             log.error("Error in button {}", id, e);
@@ -471,6 +511,18 @@ public class ShopCommands extends ListenerAdapter {
                         .setEphemeral(true).queue();
             }
         }
+    }
+
+    /** "Enter"-Button unter einem Gewinnspiel geklickt → Teilnahme eintragen (ephemeral). */
+    private void handleGiveawayEnter(ButtonInteractionEvent event, long giveawayId) {
+        var result = giveawayService.enter(giveawayId, event.getUser().getId());
+        String msg = switch (result) {
+            case OK -> "🎉 You're in! Entries: **" + giveawayService.entrantCount(giveawayId) + "**. Good luck!";
+            case ALREADY_IN -> "✅ You've already entered this giveaway.";
+            case NOT_RUNNING -> "⏰ This giveaway has already ended.";
+            case NOT_FOUND -> "This giveaway no longer exists.";
+        };
+        event.reply(msg).setEphemeral(true).queue();
     }
 
     /** Sterne-Button aus der Post-Kauf-DM geklickt → Kommentar-Modal öffnen. */
@@ -499,6 +551,18 @@ public class ShopCommands extends ListenerAdapter {
     @Override
     public void onModalInteraction(ModalInteractionEvent event) {
         String id = event.getModalId();
+        if (id.equals("ticketmodal")) {
+            try {
+                handleTicketModal(event);
+            } catch (Exception e) {
+                log.error("Ticket modal failed", e);
+                if (!event.isAcknowledged()) {
+                    event.replyEmbeds(embeds.error("Something went wrong. Please try again later."))
+                            .setEphemeral(true).queue();
+                }
+            }
+            return;
+        }
         if (!id.startsWith("ratefb:")) return;
         try {
             String[] parts = id.split(":");
