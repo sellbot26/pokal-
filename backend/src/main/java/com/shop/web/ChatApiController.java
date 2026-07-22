@@ -48,6 +48,12 @@ public class ChatApiController {
     public record SendRequest(String to, String ciphertext) {}
     public record KeyUpdateRequest(String publicKey) {}
 
+    /** Health-/Versions-Marker (ohne Auth) — zum Prüfen, welcher Stand live ist + CORS-Test. */
+    @GetMapping("/ping")
+    public Map<String, Object> ping() {
+        return Map.of("pong", true, "build", "cors-mvc-1");
+    }
+
     // ===================== Register / Login =====================
 
     @PostMapping("/register")
